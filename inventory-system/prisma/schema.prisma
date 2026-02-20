@@ -1,0 +1,122 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  name      String?
+  email     String?  // Added for V2
+  role      String   @default("USER") // ADMIN, USER
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  transactions Transaction[]
+  orders       Order[]
+}
+
+model Product {
+  id        Int      @id @default(autoincrement())
+  name      String
+  size      String?
+  price     Float
+  sku       String   @unique // Barcode
+  kaspiSku  String?  // SKU specific to Kaspi
+  image     String?  // Base64 or URL
+  quantity  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  transactions Transaction[]
+  orderItems   OrderItem[]
+}
+
+model Transaction {
+  id        Int      @id @default(autoincrement())
+  type      String   // IN, OUT, ADJUSTMENT
+  quantity  Int
+  date      DateTime @default(now())
+  
+  // Relations
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+  
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model Order {
+  id             Int      @id @default(autoincrement())
+  orderNumber    String   @unique
+  clientName     String?
+  clientPhone    String?
+  shippingMethod String?  // Legacy field, mapped to deliveryMethod if needed
+  deliveryMethod String   @default("PICKUP") // CDEK, ALMATY_COURIER, RIKA, POST, YANDEX, KASPI, PICKUP
+  
+  // Customer Details
+  address        String? // Full string (legacy or computed)
+  city           String?
+  
+  // Structured Address (New)
+  street         String?
+  house          String?
+  apartment      String?
+  postalCode     String? // For Kazpost
+  comment        String? // Courier comment
+
+  trackingNumber String?
+  waybillUuid    String?
+  
+  // Payment Details
+  paymentMethod  String   @default("CASH") // CASH, CARD, TRANSFER, KASPI, COD (Cash on Delivery)
+  codAmount      Float?   // Amount for Cash on Delivery (CDEK)
+
+  status         String   @default("PENDING") // PENDING, PROCESSING, SENT, DELIVERED, COMPLETED, CANCELLED
+  totalAmount    Float
+  source         String   @default("POS") // POS, WEBSITE, KASPI
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Relations
+  items          OrderItem[]
+  history        OrderHistory[]
+  userId         Int?
+  user           User?    @relation(fields: [userId], references: [id])
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  order     Order    @relation(fields: [orderId], references: [id])
+  
+  productId Int?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  // Snapshot data
+  name      String
+  sku       String
+  size      String?
+  image     String? // Snapshot or custom image
+  quantity  Int
+  price     Float
+}
+
+model OrderHistory {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  action    String   // CREATED, UPDATED, STATUS_CHANGE, SENT_TO_CDEK
+  details   String?  // Description of change
+  createdAt DateTime @default(now())
+}
