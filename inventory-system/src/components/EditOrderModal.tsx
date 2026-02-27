@@ -31,7 +31,7 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
         clientName: order.clientName || "",
         clientPhone: order.clientPhone?.startsWith("+7") ? order.clientPhone : (order.clientPhone ? `+7${order.clientPhone.replace(/^8?/, "")}` : "+7"),
         city: order.city || "",
-        // address: order.address || "", // Legacy
+        address: order.address || "", // Re-added the fallback full address
         street: order.street || "",
         house: order.house || "",
         apartment: order.apartment || "",
@@ -204,7 +204,10 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
                                 <label className="block text-sm font-medium">Город</label>
                                 <input className="w-full border p-2 rounded mb-2" placeholder="Город" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} />
 
-                                <label className="block text-sm font-medium">Адрес доставки</label>
+                                <label className="block text-sm font-medium">Общий адрес (строка)</label>
+                                <input className="w-full border p-2 rounded mb-2" placeholder="Улица, дом, квартира" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} />
+
+                                <label className="block text-sm font-medium">ИЛИ Адрес (по частям)</label>
                                 <div className="grid grid-cols-2 gap-2 mb-2">
                                     <input className="border p-2 rounded" placeholder="Улица" value={form.street} onChange={e => setForm({ ...form, street: e.target.value })} />
                                     <input className="border p-2 rounded" placeholder="Дом" value={form.house} onChange={e => setForm({ ...form, house: e.target.value })} />

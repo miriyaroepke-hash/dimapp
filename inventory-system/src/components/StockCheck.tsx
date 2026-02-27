@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Search, AlertTriangle, CheckCircle, XCircle, ArrowRightLeft, Trash2 } from "lucide-react";
+import { Search, AlertTriangle, CheckCircle, XCircle, ArrowRightLeft, Trash2, Camera } from "lucide-react";
 import { syncInventory } from "@/app/actions";
+import BarcodeScanner from "./BarcodeScanner";
 interface Product {
     id: number;
     name: string;
@@ -29,6 +30,7 @@ export default function StockCheck({ systemStock }: Props) {
     const [isCompared, setIsCompared] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [editingSku, setEditingSku] = useState<string | null>(null);
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
 
     // Map for fast lookups
     const stockMap = useRef(new Map<string, Product>());
@@ -165,8 +167,16 @@ export default function StockCheck({ systemStock }: Props) {
                             }}
                             ref={inputRef}
                             autoFocus
-                            className="w-full pl-10 pr-4 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            className="w-full pl-10 pr-12 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         />
+                        <button
+                            type="button"
+                            onClick={() => setIsScannerOpen(true)}
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-600 p-1 hover:bg-blue-50 rounded"
+                            title="Сканировать камерой"
+                        >
+                            <Camera className="w-5 h-5" />
+                        </button>
                     </form>
 
                     {/* Autocomplete Suggestions */}
@@ -372,6 +382,21 @@ export default function StockCheck({ systemStock }: Props) {
                     </div>
                 </div>
             </div>
+
+            {isScannerOpen && (
+                <BarcodeScanner
+                    onClose={() => setIsScannerOpen(false)}
+                    onScan={(code) => {
+                        const productBySku = stockMap.current.get(code);
+                        if (productBySku) {
+                            addItem(productBySku.sku, productBySku);
+                        } else {
+                            // If valid SKU logic matches
+                            addItem(code);
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 }

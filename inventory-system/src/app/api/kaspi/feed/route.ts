@@ -12,7 +12,7 @@ export async function GET() {
   <merchantid>YOUR_MERCHANT_ID</merchantid>
   <offers>
     ${products.map(p => `
-    <offer sku="${p.sku}">
+    <offer sku="${p.kaspiSku || p.sku}">
       <model>${p.name}</model>
       <brand>Generic</brand>
       <availabilities>

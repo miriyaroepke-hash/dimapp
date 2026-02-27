@@ -65,6 +65,28 @@ export async function createProduct(formData: FormData) {
     redirect("/inventory");
 }
 
+export async function updateProduct(id: number, data: any) {
+    try {
+        await prisma.product.update({
+            where: { id },
+            data: {
+                name: data.name,
+                sku: data.sku,
+                kaspiSku: data.kaspiSku || null,
+                size: data.size || null,
+                price: data.price,
+                quantity: data.quantity,
+                image: data.image
+            }
+        });
+        revalidatePath("/inventory");
+        return { success: true };
+    } catch (e: any) {
+        console.error("Update product error:", e);
+        return { error: e.message || "Ошибка обновления товара" };
+    }
+}
+
 interface CustomerDetails {
     name: string;
     phone: string;
@@ -545,7 +567,16 @@ export async function syncKaspiOrders() {
         for (const kOrder of kaspiOrders) {
             // Map Status
             let status = "PENDING";
-            if (kOrder.status === "ACCEPTED_BY_MERCHANT") status = "PENDING";
+            if (kOrder.status === "ACCEPTED_BY_MERCHANT") {
+                status = "PENDING";
+                // If it is in delivery state, check if handed over to courier
+                if (kOrder.state === "KASPI_DELIVERY" || kOrder.state === "DELIVERY") {
+                    if (kOrder.kaspiDelivery?.courierTransmissionDate) {
+                        status = "SHIPPED";
+                    }
+                }
+            }
+
             if (kOrder.state === "PICKUP" && kOrder.status === "ACCEPTED_BY_MERCHANT") status = "READY_FOR_PICKUP";
             if (kOrder.state === "ARCHIVE" || kOrder.status === "COMPLETED") status = "ARCHIVED";
             if (kOrder.status === "CANCELLED" || kOrder.status === "CANCELLING") status = "CANCELLED";
@@ -556,19 +587,40 @@ export async function syncKaspiOrders() {
             });
 
             if (existing) {
-                // Ignore Kaspi's PENDING status if the user already manually COMPLETED/ARCHIVED it locally
-                const localIsFinished = ["COMPLETED", "ARCHIVED", "CANCELLED"].includes(existing.status);
+                // If we manually finished it locally, we don't revert to Kaspi's pending stats.
+                const localIsFinished = ["COMPLETED", "ARCHIVED", "CANCELLED", "RETURNED"].includes(existing.status);
                 const kaspiIsPending = status === "PENDING" || status === "READY_FOR_PICKUP";
 
                 if (localIsFinished && kaspiIsPending) {
-                    continue;
+                    continue; // Skip reverting
                 }
 
-                // Otherwise, sync the status from Kaspi
+                // If Kaspi status changed, OR if it's currently PENDING locally but Kaspi says it's COMPLETED etc.
                 if (existing.status !== status) {
-                    await prisma.order.update({
-                        where: { id: existing.id },
-                        data: { status }
+                    await prisma.$transaction(async (tx) => {
+                        await tx.order.update({
+                            where: { id: existing.id },
+                            data: { status }
+                        });
+
+                        // If transitioning to CANCELLED or RETURNED from an active state, return stock
+                        const wasActive = ["PENDING", "SHIPPED", "READY_FOR_PICKUP", "COMPLETED"].includes(existing.status);
+                        const isCancelled = ["CANCELLED", "RETURNED"].includes(status);
+
+                        if (wasActive && isCancelled) {
+                            const items = await tx.orderItem.findMany({ where: { orderId: existing.id } });
+                            for (const item of items) {
+                                if (item.productId) {
+                                    await tx.product.update({
+                                        where: { id: item.productId },
+                                        data: { quantity: { increment: item.quantity } }
+                                    });
+                                    await tx.transaction.create({
+                                        data: { type: "IN", quantity: item.quantity, productId: item.productId }
+                                    });
+                                }
+                            }
+                        }
                     });
                 }
                 continue;
@@ -582,15 +634,23 @@ export async function syncKaspiOrders() {
 
             // Map Delivery
             let deliveryMethod = "KASPI";
-            if (kOrder.deliveryMode === "DELIVERY_PICKUP") deliveryMethod = "PICKUP";
             if (kOrder.deliveryMode === "DELIVERY_LOCAL") deliveryMethod = "ALMATY_COURIER";
+            // KASPI PICKUP is still fulfilled through Kaspi's delivery network, so we label it "KASPI" in the UI.
 
             // Process Items to find local product match
-            const orderItemsPayload = [];
+            const orderItemsPayload: {
+                productId: number | null;
+                name: string;
+                quantity: number;
+                price: number;
+                sku: string;
+                size: string | null;
+            }[] = [];
             for (const entry of kOrder.entries) {
                 let name = entry.productName || "Товар Kaspi";
                 let size = null;
                 const sku = entry.productCode;
+                let productId = null;
 
                 if (sku) {
                     const localProduct = await prisma.product.findFirst({
@@ -604,10 +664,12 @@ export async function syncKaspiOrders() {
                     if (localProduct) {
                         name = localProduct.name;
                         size = localProduct.size;
+                        productId = localProduct.id;
                     }
                 }
 
                 orderItemsPayload.push({
+                    productId,
                     name: name,
                     quantity: entry.quantity,
                     price: entry.totalPrice / entry.quantity,
@@ -616,22 +678,45 @@ export async function syncKaspiOrders() {
                 });
             }
 
-            // Create Order
-            await prisma.order.create({
-                data: {
-                    orderNumber: kOrder.code,
-                    clientName: kOrder.customer ? `${kOrder.customer.firstName} ${kOrder.customer.lastName}` : "Kaspi Client",
-                    clientPhone: kOrder.customer?.cellPhone || "",
-                    city: kOrder.deliveryAddress?.city || "Almaty",
-                    address: kOrder.deliveryAddress?.formattedAddress || "",
-                    deliveryMethod: deliveryMethod,
-                    paymentMethod: kOrder.paymentMode,
-                    totalAmount: kOrder.totalPrice,
-                    status: status,
-                    createdAt: new Date(kOrder.creationDate),
-                    source: "KASPI",
-                    items: {
-                        create: orderItemsPayload
+            // Skip garbage test orders from Kaspi (where offer code is absent/UNKNOWN)
+            const isDummy = orderItemsPayload.some(item => item.sku === "UNKNOWN" || item.name === "Товар Kaspi");
+
+            if (isDummy) {
+                console.log(`Skipping dummy order ${kOrder.code}`);
+                continue;
+            }
+
+            // Create Order and Deduct Stock
+            await prisma.$transaction(async (tx) => {
+                await tx.order.create({
+                    data: {
+                        orderNumber: kOrder.code,
+                        clientName: kOrder.customer ? `${kOrder.customer.firstName} ${kOrder.customer.lastName}` : "Kaspi Client",
+                        clientPhone: kOrder.customer?.cellPhone || "",
+                        city: kOrder.deliveryAddress?.city || "Almaty",
+                        address: kOrder.deliveryAddress?.formattedAddress || "",
+                        deliveryMethod: deliveryMethod,
+                        paymentMethod: kOrder.paymentMode,
+                        totalAmount: kOrder.totalPrice,
+                        status: status,
+                        createdAt: new Date(kOrder.creationDate),
+                        source: "KASPI",
+                        items: {
+                            create: orderItemsPayload
+                        }
+                    }
+                });
+
+                // Deduct inventory
+                for (const item of orderItemsPayload) {
+                    if (item.productId) {
+                        await tx.product.update({
+                            where: { id: item.productId },
+                            data: { quantity: { decrement: item.quantity } }
+                        });
+                        await tx.transaction.create({
+                            data: { type: "OUT", quantity: item.quantity, productId: item.productId }
+                        });
                     }
                 }
             });
@@ -641,7 +726,6 @@ export async function syncKaspiOrders() {
         revalidatePath("/daily-plan");
         revalidatePath("/kaspi");
         return { success: true, added: addedCount, total: kaspiOrders.length };
-
     } catch (e: any) {
         console.error("Kaspi Sync Error:", e);
         return { error: e.message || "Ошибка синхронизации" };

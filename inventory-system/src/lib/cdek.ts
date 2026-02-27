@@ -215,7 +215,7 @@ export async function createCdekOrderPayload(order: any) {
 
     const payload = {
         type: "1", // Online store order
-        number: order.orderNumber,
+        number: `${order.orderNumber}-${Math.random().toString(36).substring(2, 6)}`,
         tariff_code: 137, // Посылка склад-дверь (Parcel Warehouse-Door)
         comment: `Order ${order.orderNumber}. ${order.comment || ""}`.trim(),
         recipient: {

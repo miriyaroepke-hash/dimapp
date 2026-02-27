@@ -1,12 +1,23 @@
 
 import prisma from "@/lib/prisma";
 import { format } from "date-fns";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
 
 export default async function ArchivePage() {
+    const session = await getServerSession(authOptions);
+    const userRole = (session?.user as any)?.role || "USER";
+
+    const whereClause: any = {
+        status: "ARCHIVED"
+    };
+
+    if (userRole === "COURIER") {
+        whereClause.deliveryMethod = "ALMATY_COURIER";
+    }
+
     const archivedOrders = await prisma.order.findMany({
-        where: {
-            status: "ARCHIVED"
-        },
+        where: whereClause,
         include: { items: true },
         orderBy: { updatedAt: "desc" },
         take: 100 // Limit to last 100 orders for performance

@@ -32,6 +32,10 @@ export interface KaspiOrder {
     deliveryMode: string;
     isKaspiDelivery: boolean;
     pickupPointId?: string;
+    kaspiDelivery?: {
+        courierTransmissionDate?: number | null;
+        waybillNumber?: string;
+    };
 }
 
 export async function getKaspiOrders(daysBack: number = 7): Promise<KaspiOrder[]> {
@@ -44,9 +48,9 @@ export async function getKaspiOrders(daysBack: number = 7): Promise<KaspiOrder[]
     }
 
     const dateFrom = Date.now() - (daysBack * 24 * 60 * 60 * 1000);
-    // User wants "Pickup" and "To Pack" (NEW, ACCEPTED). 
+    // User wants "Pickup" and "To Pack" (NEW, SIGN_REQUIRED, PICKUP). 
     // We include ARCHIVE so we can sync completed/cancelled orders to update local status
-    const states = ["NEW", "SIGN_REQUIRED", "PICKUP", "DELIVERY", "KASPI_DELIVERY", "ARCHIVE"];
+    const states = ["NEW", "SIGN_REQUIRED", "PICKUP", "KASPI_DELIVERY", "DELIVERY", "ARCHIVE"];
 
     let allOrders: KaspiOrder[] = [];
 
@@ -104,22 +108,16 @@ export async function getKaspiOrders(daysBack: number = 7): Promise<KaspiOrder[]
                         const eInc = findIncluded("orderentries", eRef.id);
                         if (!eInc) return null;
 
-                        const eAttrs = eInc.attributes;
-                        const productRel = eInc.relationships?.product?.data;
-                        let productCode = "UNKNOWN";
-
-                        if (productRel) {
-                            const pInc = findIncluded("products", productRel.id);
-                            if (pInc) {
-                                productCode = pInc.attributes.code;
-                            }
-                        }
+                        const eAttrs = eInc.attributes || {};
+                        const offer = eAttrs.offer || {};
+                        const productCode = offer.code || "UNKNOWN";
+                        const productName = offer.name || "Товар Kaspi";
 
                         return {
                             id: eInc.id,
                             quantity: eAttrs.quantity,
                             totalPrice: eAttrs.totalPrice,
-                            productName: "Товар Kaspi",
+                            productName: productName,
                             productCode: productCode
                         };
                     }).filter(Boolean);
@@ -145,7 +143,8 @@ export async function getKaspiOrders(daysBack: number = 7): Promise<KaspiOrder[]
                         pickupPointId: attrs.pickupPointId,
                         customer: customer,
                         entries: entries,
-                        deliveryAddress: deliveryAddress
+                        deliveryAddress: deliveryAddress,
+                        kaspiDelivery: attrs.kaspiDelivery
                     };
                 });
 

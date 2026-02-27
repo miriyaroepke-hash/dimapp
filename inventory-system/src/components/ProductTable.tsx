@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Edit, Trash2, Printer, ArrowUpDown, CheckSquare, Square } from "lucide-react";
-import { printLabel } from "@/lib/printLabel";
+import { ProductLabelData } from "@/lib/printLabel";
+import PrintLabelModal from "./PrintLabelModal";
+import EditProductModal from "./EditProductModal";
 import { deleteProducts } from "@/app/actions";
 
 interface Product {
@@ -30,6 +32,8 @@ export default function ProductTable({ products, total, currentPage, totalPages 
     const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [printProducts, setPrintProducts] = useState<ProductLabelData[] | null>(null);
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
     // Sorting params from URL
     const sort = searchParams.get("sort") || "createdAt";
@@ -90,8 +94,15 @@ export default function ProductTable({ products, total, currentPage, totalPages 
     };
 
     const handleBulkPrint = () => {
-        const selectedProducts = products.filter(p => selectedIds.includes(p.id));
-        printLabel(selectedProducts);
+        const selectedProducts = products.filter(p => selectedIds.includes(p.id)).map(p => ({
+            name: p.name,
+            sku: p.sku,
+            price: p.price,
+            size: p.size
+        }));
+        if (selectedProducts.length > 0) {
+            setPrintProducts(selectedProducts);
+        }
     };
 
     return (
@@ -197,27 +208,54 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                                 className="px-6 py-3 cursor-pointer hover:bg-gray-100"
                                 onClick={() => handleSort("name")}
                             >
-                                <div className="flex items-center gap-1">
-                                    Наименование <ArrowUpDown className="w-3 h-3" />
+                                <div className="flex items-center gap-1 group">
+                                    Наименование
+                                    <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "name" ? "text-blue-600" : "text-gray-300"}`} />
                                 </div>
                             </th>
-                            <th className="px-6 py-3">Штрихкод</th>
-                            <th className="px-6 py-3">Арт. Kaspi</th>
-                            <th className="px-6 py-3">Размер</th>
+                            <th
+                                className="px-6 py-3 cursor-pointer hover:bg-gray-100"
+                                onClick={() => handleSort("sku")}
+                            >
+                                <div className="flex items-center gap-1 group">
+                                    Штрихкод
+                                    <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "sku" ? "text-blue-600" : "text-gray-300"}`} />
+                                </div>
+                            </th>
+                            <th
+                                className="px-6 py-3 cursor-pointer hover:bg-gray-100"
+                                onClick={() => handleSort("kaspiSku")}
+                            >
+                                <div className="flex items-center gap-1 group">
+                                    Арт. Kaspi
+                                    <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "kaspiSku" ? "text-blue-600" : "text-gray-300"}`} />
+                                </div>
+                            </th>
+                            <th
+                                className="px-6 py-3 cursor-pointer hover:bg-gray-100"
+                                onClick={() => handleSort("size")}
+                            >
+                                <div className="flex items-center gap-1 group">
+                                    Размер
+                                    <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "size" ? "text-blue-600" : "text-gray-300"}`} />
+                                </div>
+                            </th>
                             <th
                                 className="px-6 py-3 cursor-pointer hover:bg-gray-100"
                                 onClick={() => handleSort("price")}
                             >
-                                <div className="flex items-center gap-1">
-                                    Цена <ArrowUpDown className="w-3 h-3" />
+                                <div className="flex items-center gap-1 group">
+                                    Цена
+                                    <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "price" ? "text-blue-600" : "text-gray-300"}`} />
                                 </div>
                             </th>
                             <th
                                 className="px-6 py-3 cursor-pointer hover:bg-gray-100"
                                 onClick={() => handleSort("quantity")}
                             >
-                                <div className="flex items-center gap-1">
-                                    Остаток <ArrowUpDown className="w-3 h-3" />
+                                <div className="flex items-center gap-1 group">
+                                    Остаток
+                                    <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "quantity" ? "text-blue-600" : "text-gray-300"}`} />
                                 </div>
                             </th>
                             <th className="px-6 py-3">Действия</th>
@@ -266,11 +304,23 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                                     <td className="px-6 py-4">
                                         <div className="flex gap-2">
                                             <button
-                                                onClick={() => printLabel(product)}
+                                                onClick={() => setPrintProducts([{
+                                                    name: product.name,
+                                                    sku: product.sku,
+                                                    price: product.price,
+                                                    size: product.size
+                                                }])}
                                                 className="p-1 text-purple-600 hover:bg-purple-50 rounded"
                                                 title="Печать"
                                             >
                                                 <Printer className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => setEditingProduct(product)}
+                                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                                title="Редактировать"
+                                            >
+                                                <Edit className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={async () => {
@@ -315,6 +365,24 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                         </button>
                     </div>
                 </div>
+            )}
+
+            {printProducts && (
+                <PrintLabelModal
+                    products={printProducts}
+                    onClose={() => setPrintProducts(null)}
+                />
+            )}
+
+            {editingProduct && (
+                <EditProductModal
+                    product={editingProduct}
+                    onClose={() => setEditingProduct(null)}
+                    onSuccess={() => {
+                        setEditingProduct(null);
+                        router.refresh();
+                    }}
+                />
             )}
         </div>
     );
