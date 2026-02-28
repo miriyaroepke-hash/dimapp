@@ -142,6 +142,18 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                         <option value="positive">В наличии</option>
                         <option value="all">Все (вкл. 0)</option>
                     </select>
+
+                    {/* Per Page Filter */}
+                    <select
+                        value={searchParams.get("perPage") || "10"}
+                        onChange={(e) => updateParams({ perPage: e.target.value, page: "1" })}
+                        className="border rounded px-3 py-2 bg-white"
+                    >
+                        <option value="10">По 10 шт.</option>
+                        <option value="50">По 50 шт.</option>
+                        <option value="100">По 100 шт.</option>
+                        <option value="all">Все товары</option>
+                    </select>
                 </form>
 
                 {selectedIds.length > 0 && (

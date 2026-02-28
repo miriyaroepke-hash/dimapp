@@ -7,20 +7,20 @@ import SyncKaspiButton from "@/components/SyncKaspiButton";
 export default async function InventoryPage({
     searchParams,
 }: {
-    searchParams: Promise<{ q?: string; page?: string; size?: string; stock?: string; sort?: string; order?: string }>;
+    searchParams: Promise<{ q?: string; page?: string; size?: string; stock?: string; sort?: string; order?: string; perPage?: string }>;
 }) {
-    const { q, page: pageStr, size, stock, sort, order } = await searchParams;
+    const { q, page: pageStr, size, stock, sort, order, perPage } = await searchParams;
     const query = q || "";
     const page = Number(pageStr) || 1;
-    const limit = 10;
-    const skip = (page - 1) * limit;
+    const limit = perPage === "all" ? undefined : Number(perPage) || 10;
+    const skip = limit ? (page - 1) * limit : 0;
 
     const where: any = {};
 
     if (query) {
         where.OR = [
-            { name: { contains: query } },
-            { sku: { contains: query } },
+            { name: { contains: query, mode: "insensitive" } },
+            { sku: { contains: query, mode: "insensitive" } },
         ];
     }
 
@@ -40,7 +40,7 @@ export default async function InventoryPage({
         prisma.product.findMany({
             where,
             skip,
-            take: limit,
+            ...(limit ? { take: limit } : {}),
             orderBy: { [sortField]: sortOrder },
         }),
         prisma.product.count({ where }),
@@ -66,7 +66,7 @@ export default async function InventoryPage({
                 products={products}
                 total={total}
                 currentPage={page}
-                totalPages={Math.ceil(total / limit)}
+                totalPages={limit ? Math.ceil(total / limit) : 1}
             />
         </div>
     );
