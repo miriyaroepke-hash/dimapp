@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingCart, Settings, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Settings, LogOut, Menu, X, CreditCard } from "lucide-react";
 import { useState } from "react";
 import { signOut } from "next-auth/react";
 import clsx from "clsx";
@@ -10,11 +10,12 @@ import clsx from "clsx";
 const navItems = [
     { name: "План дня", href: "/daily-plan", icon: LayoutDashboard },
     { name: "Склад", href: "/inventory", icon: Package },
-    { name: "Инвентаризация", href: "/stock-check", icon: ShoppingCart }, // Need better icon for Inventory Check
+    { name: "Инвентаризация", href: "/stock-check", icon: ShoppingCart },
     { name: "Заказы", href: "/orders", icon: ShoppingCart },
-    { name: "Архив", href: "/archive", icon: Package }, // Archive link
-    { name: "Kaspi", href: "/kaspi", icon: ShoppingCart }, // Specific icon
-    { name: "Пользователи", href: "/users", icon: Settings }, // Only if admin, handled in render logic or just show for all and redirect? usually show only if admin
+    { name: "Архив", href: "/archive", icon: Package },
+    { name: "Kaspi", href: "/kaspi", icon: ShoppingCart },
+    { name: "Кредиты", href: "/credits", icon: CreditCard },
+    { name: "Пользователи", href: "/users", icon: Settings },
 ];
 
 export default function Sidebar() {
