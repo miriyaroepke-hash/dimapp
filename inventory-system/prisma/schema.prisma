@@ -121,21 +121,3 @@ model OrderHistory {
   details   String?  // Description of change
   createdAt DateTime @default(now())
 }
-
-model Credit {
-  id             Int      @id @default(autoincrement())
-  name           String   // e.g. "Кредит 1М"
-  principal      Float    // Сумма займа (тело кредита)
-  dailyPayment   Float    // Ежедневный платеж
-  monthlyPayment Float    // Общий платеж в месяц (для сверки)
-  startDate      DateTime // Дата начала
-  durationMonths Int      // Срок в месяцах
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-}
-
-model Balance {
-  id        Int      @id @default(1)
-  amount    Float    @default(0)
-  updatedAt DateTime @updatedAt
-}
