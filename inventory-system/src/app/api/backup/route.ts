@@ -1,90 +1,113 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import nodemailer from 'nodemailer';
+import * as XLSX from 'xlsx';
+import { format } from 'date-fns';
 
 const prisma = new PrismaClient();
 
 export async function GET(request: Request) {
-    // Для безопасности (чтобы только Vercel Cron мог запускать этот роут)
-    // Можно раскомментировать после добавления CRON_SECRET в Vercel Environment Variables
-    /*
+    // SECURITY: Limit to cron or secure manual triggers
     const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return new NextResponse('Unauthorized', { status: 401 });
+    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        return new NextResponse('Unauthorized', { status: 401 });
     }
-    */
 
     try {
-        // 1. Все товары и активные заказы (статус НЕ 'COMPLETED')
+        const EMAIL_USER = process.env.EMAIL_USER;
+        const EMAIL_PASS = process.env.EMAIL_PASS;
+        const TARGET_EMAIL = process.env.BACKUP_TARGET_EMAIL;
+
+        if (!EMAIL_USER || !EMAIL_PASS || !TARGET_EMAIL) {
+            console.error('Email credentials missing');
+            return NextResponse.json({ error: 'Email credentials missing in Vercel env' }, { status: 500 });
+        }
+
         const products = await prisma.product.findMany();
-
         const activeOrders = await prisma.order.findMany({
-            where: {
-                status: {
-                    not: 'COMPLETED',
-                },
-            },
-            include: {
-                items: true, // Включаем товары в заказе
-            }
+            where: { status: { not: 'COMPLETED' } },
+            include: { items: true },
+            orderBy: { createdAt: 'desc' },
         });
-
-        const activeData = {
-            products,
-            activeOrders,
-        };
-
-        // 2. Все завершённые заказы ('COMPLETED')
-        // Данные клиента (clientName, clientPhone, address) уже находятся внутри модели Order
         const archivedOrders = await prisma.order.findMany({
-            where: {
-                status: 'COMPLETED',
-            },
-            include: {
-                items: true,
-            }
+            where: { status: 'COMPLETED' },
+            include: { items: true },
+            orderBy: { createdAt: 'desc' },
         });
 
-        const archiveData = {
-            completedOrders: archivedOrders,
-        };
+        // Generate Excel Workbook
+        const wb = XLSX.utils.book_new();
 
-        const activeJsonString = JSON.stringify(activeData, null, 2);
-        const archiveJsonString = JSON.stringify(archiveData, null, 2);
-
-        const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-        const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-
-        if (!BOT_TOKEN || !CHAT_ID) {
-            console.error('Telegram credentials missing');
-            return NextResponse.json({ error: 'Telegram credentials missing' }, { status: 500 });
+        // 1. Products Sheet
+        const productsData = products.map(p => ({
+            'ID': p.id,
+            'Наименование': p.name,
+            'Штрихкод': p.sku,
+            'Арт. Kaspi': p.kaspiSku || '-',
+            'Размер': p.size || '-',
+            'Цена': p.price,
+            'Остаток': p.quantity
+        }));
+        if (productsData.length) {
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(productsData), "Склад");
         }
 
-        // Вспомогательная функция для отправки документа в Telegram
-        async function sendToTelegram(filename: string, content: string) {
-            const formData = new FormData();
-            formData.append('chat_id', CHAT_ID as string);
+        // Helper for Orders styling
+        const mapOrders = (orders: typeof activeOrders) => orders.map(o => ({
+            'Заказ №': o.orderNumber,
+            'Дата': format(new Date(o.createdAt), 'yyyy-MM-dd HH:mm'),
+            'Доставка': o.deliveryMethod,
+            'Клиент': o.clientName || '-',
+            'Телефон': o.clientPhone || '-',
+            'Город': o.city || '-',
+            'Адрес': o.address || '-',
+            'Товары': o.items.map(i => `${i.name} (${i.size || '-'}) x${i.quantity}`).join(', '),
+            'Оплата': o.paymentMethod,
+            'Итого': o.totalAmount,
+            'Статус': o.status,
+            'Трек-код': o.trackingNumber || '-'
+        }));
 
-            const blob = new Blob([content], { type: 'application/json' });
-            formData.append('document', blob, filename);
-
-            const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (!res.ok) {
-                const errorText = await res.text();
-                throw new Error(`Telegram error: ${errorText}`);
-            }
-
-            return res.json();
+        // 2. Active Orders Sheet
+        const activeOrdersData = mapOrders(activeOrders);
+        if (activeOrdersData.length) {
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(activeOrdersData), "Активные Заказы");
         }
 
-        // Отправляем файлы в Telegram
-        await sendToTelegram('active_data.json', activeJsonString);
-        await sendToTelegram('archive_data.json', archiveJsonString);
+        // 3. Archive Sheet
+        const archiveOrdersData = mapOrders(archivedOrders);
+        if (archiveOrdersData.length) {
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(archiveOrdersData), "Архив");
+        }
 
-        return NextResponse.json({ success: true, message: 'Backups successfully sent to Telegram' });
+        // Generate binary string -> buffer
+        const excelBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        const dateStr = format(new Date(), 'yyyy-MM-dd');
+        const filename = `Dimmiani_Backup_${dateStr}.xlsx`;
+
+        // Send Email
+        const transporter = nodemailer.createTransport({
+            service: 'gmail', // You can change this if you use Yandex or Mail.ru
+            auth: {
+                user: EMAIL_USER,
+                pass: EMAIL_PASS,
+            },
+        });
+
+        await transporter.sendMail({
+            from: `"Dimmiani System" <${EMAIL_USER}>`,
+            to: TARGET_EMAIL,
+            subject: `Ежедневный бэкап: Склад и Заказы (${dateStr})`,
+            text: `Во вложении свежая выгрузка остатков склада и всех заказов на ${dateStr}.`,
+            attachments: [
+                {
+                    filename: filename,
+                    content: excelBuffer
+                }
+            ]
+        });
+
+        return NextResponse.json({ success: true, message: 'Backup emailed successfully' });
 
     } catch (error) {
         console.error('Backup cron job error:', error);
