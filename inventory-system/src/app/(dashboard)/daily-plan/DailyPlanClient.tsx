@@ -216,23 +216,23 @@ export default function DailyPlanClient({ orders }: { orders: Order[] }) {
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow">
-                <div className="flex items-center gap-4">
+            <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4 bg-white p-4 rounded-lg shadow">
+                <div className="flex flex-wrap items-center gap-4">
                     <h1 className="text-2xl font-bold">План Дня</h1>
-                    <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                    <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap">
                         Всего: {orders.length}
                     </span>
-                    <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                    <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap">
                         Выбрано: {selectedIds.length}
                     </span>
                 </div>
 
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 w-full md:w-auto">
                     <button
                         onClick={handlePrintCdek}
                         disabled={selectedIds.length === 0 || isPrinting}
-                        className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex-1 md:flex-none justify-center items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap flex"
                     >
                         {isPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
                         Печать СДЭК
@@ -243,7 +243,7 @@ export default function DailyPlanClient({ orders }: { orders: Order[] }) {
                             window.open(`/kazpost/print?ids=${selectedIds.join(',')}`, '_blank');
                         }}
                         disabled={selectedIds.length === 0}
-                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex-1 md:flex-none justify-center items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap flex"
                     >
                         <Printer className="w-4 h-4" />
                         Печать Казпочта
@@ -251,7 +251,7 @@ export default function DailyPlanClient({ orders }: { orders: Order[] }) {
                     <button
                         onClick={handleArchive}
                         disabled={selectedIds.length === 0}
-                        className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex-1 md:flex-none justify-center items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap flex"
                     >
                         <Check className="w-4 h-4" />
                         В архив
@@ -259,7 +259,7 @@ export default function DailyPlanClient({ orders }: { orders: Order[] }) {
                     <button
                         onClick={handleExport}
                         disabled={selectedIds.length === 0}
-                        className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex-1 md:flex-none justify-center items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap flex"
                     >
                         <Download className="w-4 h-4" />
                         Скачать Excel

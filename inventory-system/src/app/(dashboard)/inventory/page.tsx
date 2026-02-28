@@ -48,13 +48,13 @@ export default async function InventoryPage({
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                 <h1 className="text-3xl font-bold">Склад</h1>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <SyncKaspiButton />
                     <Link
                         href="/inventory/add"
-                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+                        className="flex-1 sm:flex-none justify-center items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium flex whitespace-nowrap"
                     >
                         <Plus className="w-5 h-5 mr-1" />
                         Добавить товар
