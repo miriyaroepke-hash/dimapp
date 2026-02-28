@@ -109,8 +109,11 @@ export async function GET(request: Request) {
 
         return NextResponse.json({ success: true, message: 'Backup emailed successfully' });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Backup cron job error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({
+            error: 'Internal Server Error',
+            details: error?.message || String(error)
+        }, { status: 500 });
     }
 }
