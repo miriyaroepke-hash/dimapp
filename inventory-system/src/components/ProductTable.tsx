@@ -108,8 +108,8 @@ export default function ProductTable({ products, total, currentPage, totalPages 
     return (
         <div className="bg-white rounded-lg shadow overflow-hidden">
             {/* Top Bar: Search & Bulk Actions */}
-            <div className="p-4 border-b border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center">
-                <form onSubmit={handleSearch} className="flex gap-2 w-full flex-wrap md:flex-nowrap">
+            <div className="p-4 border-b border-gray-200 flex flex-col gap-4 justify-between items-start md:flex-row md:items-center">
+                <form onSubmit={handleSearch} className="flex gap-2 w-full flex-wrap sm:flex-nowrap">
                     <div className="relative flex-1 min-w-[200px]">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
