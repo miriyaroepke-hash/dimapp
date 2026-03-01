@@ -1,32 +1,49 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-export async function GET() {
-    const products = await prisma.product.findMany({
-        where: { quantity: { gt: 0 } }
-    });
+function escapeXml(unsafe: string) {
+  return unsafe.replace(/[<>&'"]/g, (c) => {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '\'': return '&apos;';
+      case '"': return '&quot;';
+      default: return c;
+    }
+  });
+}
 
-    const xml = `<?xml version="1.0" encoding="utf-8"?>
+export async function GET() {
+  // Получаем ВСЕ товары, даже с нулевым остатком.
+  const products = await prisma.product.findMany();
+
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
 <kaspi_catalog date="${new Date().toISOString()}" xmlns="kaspiShopping" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="kaspiShopping http://kaspi.kz/kaspishopping.xsd">
-  <company>Inventory Store</company>
+  <company>Dimmiani</company>
   <merchantid>YOUR_MERCHANT_ID</merchantid>
   <offers>
-    ${products.map(p => `
-    <offer sku="${p.kaspiSku || p.sku}">
-      <model>${p.name}</model>
-      <brand>Generic</brand>
+    ${products.map((p) => {
+    // Каспи артикул или внутренний штрихкод, если он есть
+    const finalSku = p.kaspiSku && p.kaspiSku.trim() !== "" ? p.kaspiSku : p.sku;
+    const isAvailable = p.quantity > 0 ? "yes" : "no";
+
+    return `
+    <offer sku="${finalSku}">
+      <model>${escapeXml(p.name)}</model>
+      <brand>Dimmiani</brand>
       <availabilities>
-        <availability available="${p.quantity > 0 ? 'yes' : 'no'}" storeId="PP1" preOrder="0"/>
+        <availability available="${isAvailable}" storeId="PP1" preOrder="0"/>
       </availabilities>
       <price>${p.price}</price>
-    </offer>
-    `).join('')}
+    </offer>`;
+  }).join('')}
   </offers>
 </kaspi_catalog>`;
 
-    return new NextResponse(xml, {
-        headers: {
-            "Content-Type": "text/xml",
-        },
-    });
+  return new NextResponse(xml, {
+    headers: {
+      "Content-Type": "text/xml",
+    },
+  });
 }
