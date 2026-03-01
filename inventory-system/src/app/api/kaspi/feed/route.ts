@@ -33,7 +33,7 @@ export async function GET() {
       <model>${escapeXml(p.name)}</model>
       <brand>Dimmiani</brand>
       <availabilities>
-        <availability available="${isAvailable}" storeId="PP1" preOrder="0"/>
+        <availability available="${isAvailable}" storeId="PP1" preOrder="0" stockCount="${p.quantity}"/>
       </availabilities>
       <price>${p.price}</price>
     </offer>`;
