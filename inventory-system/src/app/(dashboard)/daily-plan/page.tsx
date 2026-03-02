@@ -9,18 +9,27 @@ export default async function DailyPlanPage() {
     const userRole = (session?.user as any)?.role || "USER";
 
     const whereClause: any = {
-        status: { in: ["PENDING", "PROCESSING", "COMPLETED", "READY_FOR_PICKUP"] }
+        status: { in: ["PENDING", "PROCESSING", "COMPLETED", "READY_FOR_PICKUP"] },
+        source: { not: "KASPI" }
     };
 
     if (userRole === "COURIER") {
         whereClause.deliveryMethod = "ALMATY_COURIER";
     }
 
-    const activeOrders = await prisma.order.findMany({
-        where: whereClause,
-        include: { items: true },
-        orderBy: { createdAt: "desc" }
-    });
+    const [activeOrders, kaspiCount] = await Promise.all([
+        prisma.order.findMany({
+            where: whereClause,
+            include: { items: true },
+            orderBy: { createdAt: "desc" }
+        }),
+        prisma.order.count({
+            where: {
+                source: "KASPI",
+                status: { in: ["PENDING", "READY_FOR_PICKUP"] }
+            }
+        })
+    ]);
 
-    return <DailyPlanClient orders={activeOrders} />;
+    return <DailyPlanClient orders={activeOrders} kaspiCount={kaspiCount} />;
 }

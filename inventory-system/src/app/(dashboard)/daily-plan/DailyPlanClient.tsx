@@ -33,7 +33,7 @@ interface Order {
 
 import { createCdekOrder } from "@/app/actions";
 
-export default function DailyPlanClient({ orders }: { orders: Order[] }) {
+export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Order[], kaspiCount?: number }) {
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isPrinting, setIsPrinting] = useState(false);
 
@@ -225,9 +225,13 @@ export default function DailyPlanClient({ orders }: { orders: Order[] }) {
                     <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap">
                         Выбрано: {selectedIds.length}
                     </span>
+                    {kaspiCount > 0 && (
+                        <div className="bg-red-100 border border-red-300 text-red-800 px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 animate-pulse cursor-pointer shadow-sm hover:scale-105 transition-transform" onClick={() => window.location.href = '/kaspi'}>
+                            <span>📦</span>
+                            Новых заказов Kaspi: {kaspiCount}
+                        </div>
+                    )}
                 </div>
-
-
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
                     <button
                         onClick={handlePrintCdek}

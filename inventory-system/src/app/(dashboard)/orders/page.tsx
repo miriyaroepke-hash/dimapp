@@ -8,7 +8,7 @@ export default async function OrdersPage() {
     const session = await getServerSession(authOptions);
     const userRole = (session?.user as any)?.role || "USER";
 
-    const whereClause: any = {};
+    const whereClause: any = { source: { not: "KASPI" } };
     if (userRole === "COURIER") {
         whereClause.deliveryMethod = "ALMATY_COURIER";
     }
