@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Loader2, X, Upload } from "lucide-react";
-import { compressImage } from "@/lib/utils";
 import { updateProduct } from "@/app/actions";
 
 interface Product {
@@ -24,6 +23,7 @@ interface EditProductModalProps {
 
 export default function EditProductModal({ product, onClose, onSuccess }: EditProductModalProps) {
     const [loading, setLoading] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
     const [form, setForm] = useState({
         name: product.name,
         sku: product.sku,
@@ -36,13 +36,29 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            try {
-                const compressed = await compressImage(file);
-                setForm({ ...form, image: compressed });
-            } catch (error) {
-                console.error("Image upload failed", error);
+        if (!file) return;
+
+        setUploadingImage(true);
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const res = await fetch("/api/upload-image", {
+                method: "POST",
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (!res.ok || data.error) {
+                throw new Error(data.details || data.error || "Upload failed");
             }
+
+            setForm({ ...form, image: data.url });
+        } catch (error) {
+            console.error("Image upload failed", error);
+            alert("Не удалось загрузить фото. Попробуйте ещё раз.");
+        } finally {
+            setUploadingImage(false);
         }
     };
 
@@ -83,7 +99,12 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                     {/* Image Upload */}
                     <div className="flex justify-center">
                         <label className="w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer bg-gray-50 hover:bg-gray-100 relative overflow-hidden group">
-                            {form.image ? (
+                            {uploadingImage ? (
+                                <div className="flex flex-col items-center text-blue-500">
+                                    <Loader2 className="w-6 h-6 animate-spin mb-1" />
+                                    <span className="text-xs">Загрузка...</span>
+                                </div>
+                            ) : form.image ? (
                                 <>
                                     <img src={form.image} className="w-full h-full object-cover" alt="Preview" />
                                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs">
@@ -96,7 +117,13 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                                     <span className="text-xs">Загрузить</span>
                                 </div>
                             )}
-                            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleImageUpload}
+                                disabled={uploadingImage}
+                            />
                         </label>
                     </div>
 
@@ -167,11 +194,11 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                     </button>
                     <button
                         onClick={handleSave}
-                        disabled={loading}
-                        className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 flex items-center gap-2 font-medium"
+                        disabled={loading || uploadingImage}
+                        className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 flex items-center gap-2 font-medium disabled:opacity-50"
                     >
-                        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                        Сохранить
+                        {(loading || uploadingImage) && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {uploadingImage ? "Загрузка фото..." : "Сохранить"}
                     </button>
                 </div>
             </div>
