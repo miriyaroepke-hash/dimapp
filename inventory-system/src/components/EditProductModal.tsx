@@ -12,6 +12,7 @@ interface Product {
     size: string | null;
     price: number;
     quantity: number;
+    preOrderDays: number | null;
     image: string | null;
 }
 
@@ -31,6 +32,7 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
         size: product.size || "",
         price: product.price.toString(),
         quantity: product.quantity.toString(),
+        preOrderDays: product.preOrderDays?.toString() || "0",
         image: product.image || "",
     });
 
@@ -73,6 +75,7 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
             ...form,
             price: parseFloat(form.price),
             quantity: parseInt(form.quantity),
+            preOrderDays: parseInt(form.preOrderDays) || 0,
         });
         setLoading(false);
 
@@ -156,7 +159,7 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Размер</label>
                                 <input
@@ -165,6 +168,19 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                                     onChange={e => setForm({ ...form, size: e.target.value })}
                                 />
                             </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Предзаказ (дней)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-mono"
+                                    value={form.preOrderDays}
+                                    onChange={e => setForm({ ...form, preOrderDays: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Цена (₸) *</label>
                                 <input

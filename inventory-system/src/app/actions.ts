@@ -39,26 +39,28 @@ export async function createProduct(formData: FormData) {
         }
     } else {
         // Single product
-        const quantity = parseInt(formData.get("quantity") as string);
-
-        // Only allow creation if quantity is positive
-        if (!isNaN(quantity) && quantity > 0) {
-            const sku = (formData.get("sku") as string) || generateEAN13();
-            const kaspiSku = (formData.get("kaspiSku") as string) || null;
-            const size = (formData.get("size") as string) || null;
-
-            await prisma.product.create({
-                data: {
-                    name,
-                    price,
-                    quantity,
-                    image,
-                    sku,
-                    kaspiSku,
-                    size
-                },
-            });
-        }
+            const quantity = parseInt(formData.get("quantity") as string);
+            const preOrderDays = parseInt(formData.get("preOrderDays") as string) || 0;
+    
+            // Only allow creation if quantity is positive OR if it's a pre-order
+            if ((!isNaN(quantity) && quantity > 0) || preOrderDays > 0) {
+                const sku = (formData.get("sku") as string) || generateEAN13();
+                const kaspiSku = (formData.get("kaspiSku") as string) || null;
+                const size = (formData.get("size") as string) || null;
+    
+                await prisma.product.create({
+                    data: {
+                        name,
+                        price,
+                        quantity: Math.max(0, quantity),
+                        image,
+                        sku,
+                        kaspiSku,
+                        size,
+                        preOrderDays
+                    },
+                });
+            }
     }
 
     revalidatePath("/inventory");
@@ -76,6 +78,7 @@ export async function updateProduct(id: number, data: any) {
                 size: data.size || null,
                 price: data.price,
                 quantity: data.quantity,
+                preOrderDays: data.preOrderDays || 0,
                 image: data.image
             }
         });

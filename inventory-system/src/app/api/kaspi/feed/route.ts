@@ -26,17 +26,20 @@ export async function GET() {
     ${products.map((p) => {
     // Каспи артикул или внутренний штрихкод, если он есть
     const finalSku = p.kaspiSku && p.kaspiSku.trim() !== "" ? p.kaspiSku : p.sku;
-    const isAvailable = p.quantity > 0 ? "yes" : "no";
+    const preOrderDays = (p as any).preOrderDays ?? 0;
+    const isAvailable = p.quantity > 0 || preOrderDays > 0 ? "yes" : "no";
+    const stockCount = preOrderDays > 0 ? 0 : p.quantity; // when pre-order, stockCount=0
 
     return `
     <offer sku="${finalSku}">
       <model>${escapeXml(p.name)}</model>
       <brand>Dimmiani</brand>
       <availabilities>
-        <availability available="${isAvailable}" storeId="PP1" preOrder="0" stockCount="${p.quantity}"/>
+        <availability available="${isAvailable}" storeId="PP1" preOrder="${preOrderDays}" stockCount="${stockCount}"/>
       </availabilities>
       <price>${p.price}</price>
     </offer>`;
+
   }).join('')}
   </offers>
 </kaspi_catalog>`;

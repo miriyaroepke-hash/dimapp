@@ -99,6 +99,13 @@ export default function ProductForm() {
                         <label className="block font-medium mb-1">Размер</label>
                         <input name="size" className="w-full border p-2 rounded" />
                     </div>
+                    <div className="mt-4">
+                        <label className="block font-medium mb-1">
+                            Предзаказ — дней ожидания
+                            <span className="ml-2 text-xs text-gray-400 font-normal">(если указано, Kaspi покажет товар как «Предзаказ» вместо остатка)</span>
+                        </label>
+                        <input name="preOrderDays" type="number" min="0" defaultValue={0} className="w-full border p-2 rounded" placeholder="0 — не предзаказ" />
+                    </div>
                 </>
             ) : (
                 <div className="space-y-4">
