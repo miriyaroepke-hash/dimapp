@@ -240,7 +240,7 @@ export default function StockCheck({ systemStock }: Props) {
                 {/* Left Column: System Stock */}
                 <div className="flex-1 bg-white rounded shadow flex flex-col overflow-hidden">
                     <div className="p-3 bg-gray-50 border-b font-bold text-gray-700 flex justify-between">
-                        <span>По системе ({systemStock.length})</span>
+                        <span>По системе ({systemStock.reduce((acc, p) => acc + p.quantity, 0)})</span>
                         <span className="text-xs text-gray-500">Остаток &gt; 0</span>
                     </div>
                     <div className="flex-1 overflow-y-auto p-0">
