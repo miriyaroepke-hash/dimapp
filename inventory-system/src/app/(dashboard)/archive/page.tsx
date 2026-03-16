@@ -20,53 +20,94 @@ export default async function ArchivePage() {
         where: whereClause,
         include: { items: true },
         orderBy: { updatedAt: "desc" },
-        take: 100 // Limit to last 100 orders for performance
+        take: 200
     });
+
+    function getSourceBadge(source: string) {
+        if (source === "KASPI") {
+            return (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                    📦 Kaspi
+                </span>
+            );
+        }
+        if (source === "WEBSITE") {
+            return (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                    🌐 Сайт
+                </span>
+            );
+        }
+        return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                🏪 Магазин
+            </span>
+        );
+    }
 
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-bold">Архив Заказов</h1>
+            <div className="flex items-center justify-between">
+                <h1 className="text-3xl font-bold">Архив Заказов</h1>
+                <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">
+                    {archivedOrders.length} заказов
+                </span>
+            </div>
 
             <div className="bg-white rounded-lg shadow overflow-hidden">
                 <table className="w-full text-sm text-left">
                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                         <tr>
-                            <th className="px-6 py-3">Дата</th>
-                            <th className="px-6 py-3">Номер</th>
-                            <th className="px-6 py-3">Клиент</th>
-                            <th className="px-6 py-3">Товары</th>
-                            <th className="px-6 py-3 text-right">Сумма</th>
+                            <th className="px-4 py-3">Дата</th>
+                            <th className="px-4 py-3">Номер</th>
+                            <th className="px-4 py-3">Источник</th>
+                            <th className="px-4 py-3">Клиент</th>
+                            <th className="px-4 py-3">Товары</th>
+                            <th className="px-4 py-3">Примечание</th>
+                            <th className="px-4 py-3 text-right">Сумма</th>
                         </tr>
                     </thead>
                     <tbody>
                         {archivedOrders.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                                     Архив пуст
                                 </td>
                             </tr>
                         ) : (
                             archivedOrders.map((order: any) => (
-                                <tr key={order.id} className="bg-white border-b hover:bg-gray-50">
-                                    <td className="px-6 py-4">
+                                <tr key={order.id} className={`bg-white border-b hover:bg-gray-50 ${order.source === "KASPI" ? "border-l-4 border-l-red-400" : ""}`}>
+                                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                                         {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm")}
                                     </td>
-                                    <td className="px-6 py-4 font-medium">{order.orderNumber}</td>
-                                    <td className="px-6 py-4">
-                                        <div>{order.clientName || "-"}</div>
-                                        <div className="text-xs text-gray-500">{order.clientPhone}</div>
+                                    <td className="px-4 py-3 font-medium">{order.orderNumber}</td>
+                                    <td className="px-4 py-3">
+                                        {getSourceBadge(order.source || "POS")}
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col gap-1">
+                                    <td className="px-4 py-3">
+                                        <div>{order.clientName || "—"}</div>
+                                        <div className="text-xs text-gray-400">{order.clientPhone}</div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex flex-col gap-0.5">
                                             {order.items.map((item: any, idx: number) => (
-                                                <div key={idx} className="text-xs">
-                                                    {item.name} ({item.size}) x{item.quantity}
+                                                <div key={idx} className="text-xs text-gray-700">
+                                                    {item.name}
+                                                    {item.size && <span className="text-gray-400"> ({item.size})</span>}
+                                                    <span className="text-gray-500"> ×{item.quantity}</span>
                                                 </div>
                                             ))}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-right font-bold w-32">
-                                        ₸ {order.totalAmount}
+                                    <td className="px-4 py-3 max-w-xs">
+                                        {order.comment ? (
+                                            <div className="text-xs text-gray-500 italic">{order.comment}</div>
+                                        ) : (
+                                            <span className="text-gray-300 text-xs">—</span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-bold w-28">
+                                        ₸ {order.totalAmount.toLocaleString()}
                                     </td>
                                 </tr>
                             ))
