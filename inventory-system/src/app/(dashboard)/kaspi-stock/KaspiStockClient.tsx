@@ -17,7 +17,9 @@ type LocalProduct = {
     kaspiSku: string | null;
     sku: string;
     quantity: number;
+    preOrderDays: number | null;
 };
+
 
 type DiffType = "only_kaspi" | "only_local" | "qty_mismatch" | "ok";
 

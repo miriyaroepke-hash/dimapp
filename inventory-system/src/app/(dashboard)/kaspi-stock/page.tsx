@@ -12,7 +12,9 @@ export default async function KaspiStockPage() {
             kaspiSku: true,
             sku: true,
             quantity: true,
+            preOrderDays: true,
         },
+
         orderBy: { name: "asc" },
     });
 

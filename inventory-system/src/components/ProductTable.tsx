@@ -16,8 +16,10 @@ interface Product {
     size: string | null;
     price: number;
     quantity: number;
+    preOrderDays: number | null;
     image: string | null;
 }
+
 
 interface Props {
     products: Product[];
