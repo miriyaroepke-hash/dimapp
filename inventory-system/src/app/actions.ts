@@ -620,6 +620,14 @@ export async function syncKaspiOrders() {
                                     });
                                 }
                             }
+                            // Log the return in order history
+                            await tx.orderHistory.create({
+                                data: {
+                                    orderId: existing.id,
+                                    action: "STATUS_CHANGE",
+                                    details: `Заказ Kaspi отменён, остатки возвращены на склад`
+                                }
+                            });
                         }
                     });
                 }
@@ -635,9 +643,8 @@ export async function syncKaspiOrders() {
             // Map Delivery
             let deliveryMethod = "KASPI";
             if (kOrder.deliveryMode === "DELIVERY_LOCAL") deliveryMethod = "ALMATY_COURIER";
-            // KASPI PICKUP is still fulfilled through Kaspi's delivery network, so we label it "KASPI" in the UI.
 
-            // Process Items to find local product match
+            // Process Items to find local product match by kaspiSku
             const orderItemsPayload: {
                 productId: number | null;
                 name: string;
@@ -646,13 +653,20 @@ export async function syncKaspiOrders() {
                 sku: string;
                 size: string | null;
             }[] = [];
+
+            let hasAnyUnknown = true; // assume unknown until proven otherwise
             for (const entry of kOrder.entries) {
+                const entryQty = entry.quantity || 1; // Protect against Kaspi sending 0
+                const entryPrice = entryQty > 0 ? entry.totalPrice / entryQty : entry.totalPrice;
+
                 let name = entry.productName || "Товар Kaspi";
                 let size = null;
-                const sku = entry.productCode;
+                const sku = entry.productCode || "UNKNOWN";
                 let productId = null;
 
-                if (sku) {
+                if (sku && sku !== "UNKNOWN") {
+                    hasAnyUnknown = false;
+                    // First: try matching via kaspiSku (most reliable)
                     const localProduct = await prisma.product.findFirst({
                         where: {
                             OR: [
@@ -665,36 +679,39 @@ export async function syncKaspiOrders() {
                         name = localProduct.name;
                         size = localProduct.size;
                         productId = localProduct.id;
+                    } else {
+                        // Product not matched — include in order but flag it
+                        console.warn(`Kaspi order ${kOrder.code}: product SKU "${sku}" not found locally. Add kaspiSku to the product.`);
+                        name = entry.productName || `Kaspi: ${sku}`;
                     }
                 }
 
                 orderItemsPayload.push({
                     productId,
-                    name: name,
-                    quantity: entry.quantity,
-                    price: entry.totalPrice / entry.quantity,
-                    sku: sku,
-                    size: size
+                    name,
+                    quantity: entryQty,
+                    price: entryPrice,
+                    sku,
+                    size
                 });
             }
 
-            // Skip garbage test orders from Kaspi (where offer code is absent/UNKNOWN)
-            const isDummy = orderItemsPayload.some(item => item.sku === "UNKNOWN" || item.name === "Товар Kaspi");
-
-            if (isDummy) {
-                console.log(`Skipping dummy order ${kOrder.code}`);
+            // Skip ONLY garbage test orders where ALL items have no real code
+            if (hasAnyUnknown && orderItemsPayload.every(i => i.sku === "UNKNOWN")) {
+                console.log(`Skipping dummy order ${kOrder.code} (all items UNKNOWN)`);
                 continue;
             }
 
-            // Create Order and Deduct Stock
+            // Create Order, add History note, and Deduct Stock
             await prisma.$transaction(async (tx) => {
-                await tx.order.create({
+                const createdOrder = await tx.order.create({
                     data: {
                         orderNumber: kOrder.code,
                         clientName: kOrder.customer ? `${kOrder.customer.firstName} ${kOrder.customer.lastName}` : "Kaspi Client",
                         clientPhone: kOrder.customer?.cellPhone || "",
                         city: kOrder.deliveryAddress?.city || "Almaty",
                         address: kOrder.deliveryAddress?.formattedAddress || "",
+                        comment: "Заказ из Kaspi — списано автоматически",
                         deliveryMethod: deliveryMethod,
                         paymentMethod: kOrder.paymentMode,
                         totalAmount: kOrder.totalPrice,
@@ -707,7 +724,19 @@ export async function syncKaspiOrders() {
                     }
                 });
 
-                // Deduct inventory
+                // Log in Order History
+                const unmatchedItems = orderItemsPayload.filter(i => !i.productId).map(i => i.name);
+                await tx.orderHistory.create({
+                    data: {
+                        orderId: createdOrder.id,
+                        action: "CREATED",
+                        details: unmatchedItems.length > 0
+                            ? `Заказ из Kaspi. Не найдены в инвентори: ${unmatchedItems.join(", ")}. Добавьте kaspiSku к товарам.`
+                            : "Заказ из Kaspi — все товары успешно сопоставлены"
+                    }
+                });
+
+                // Deduct stock for matched products only
                 for (const item of orderItemsPayload) {
                     if (item.productId) {
                         await tx.product.update({
