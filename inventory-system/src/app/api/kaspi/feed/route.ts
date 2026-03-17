@@ -15,8 +15,15 @@ function escapeXml(unsafe: string) {
 }
 
 export async function GET() {
-  // Получаем ВСЕ товары, даже с нулевым остатком.
-  const products = await prisma.product.findMany();
+  // Получаем только те товары, у которых заполнен Kaspi SKU
+  const products = await prisma.product.findMany({
+    where: {
+      AND: [
+        { kaspiSku: { not: null } },
+        { kaspiSku: { not: "" } }
+      ]
+    }
+  });
 
   const xml = `<?xml version="1.0" encoding="utf-8"?>
 <kaspi_catalog date="${new Date().toISOString()}" xmlns="kaspiShopping" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="kaspiShopping http://kaspi.kz/kaspishopping.xsd">
