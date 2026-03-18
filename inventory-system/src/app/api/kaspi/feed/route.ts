@@ -66,7 +66,7 @@ export async function GET() {
       <model>${escapeXml(data.name)}</model>
       <brand>Dimmiani</brand>
       <availabilities>
-        <availability available="${isAvailable}" storeId="PP1" preOrder="${data.maxPreOrderDays}" stockCount="${stockCount}"/>
+        <availability available="${isAvailable}" storeId="PP2" preOrder="${data.maxPreOrderDays}" stockCount="${stockCount}"/>
       </availabilities>
       <price>${data.price}</price>
     </offer>`;
