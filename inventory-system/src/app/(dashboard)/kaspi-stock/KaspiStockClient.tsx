@@ -151,8 +151,9 @@ export default function KaspiStockClient({ localProducts }: { localProducts: Loc
     }
 
     // Items only in local (have kaspiSku but not found in Kaspi)
+    // ONLY show them if we actually have them in stock. If it's 0, it shouldn't be in Kaspi anyway.
     for (const [sku, local] of localMap) {
-        if (!kaspiMap.has(sku)) {
+        if (!kaspiMap.has(sku) && local.quantity > 0) {
             compareRows.push({
                 sku,
                 localName: local.name, localSize: local.size, localQty: local.quantity,
