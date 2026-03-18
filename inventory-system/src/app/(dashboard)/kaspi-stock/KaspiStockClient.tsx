@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState } from "react";
-import { RefreshCw, GitCompare, Upload, AlertCircle } from "lucide-react";
+import { useState, useRef } from "react";
+import { RefreshCw, GitCompare, Upload, AlertCircle, FileSpreadsheet } from "lucide-react";
 
 type KaspiOffer = {
     sku: string;
@@ -41,21 +41,70 @@ export default function KaspiStockClient({ localProducts }: { localProducts: Loc
     const [showOnlyDiffs, setShowOnlyDiffs] = useState(false);
     const [loaded, setLoaded] = useState(false);
 
-    const loadKaspiOffers = async () => {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
         setIsLoading(true);
         setError(null);
+        
         try {
-            const res = await fetch("/api/kaspi/offers");
-            const data = await res.json();
-            if (!res.ok || data.error) {
-                setError(data.error || "Ошибка загрузки данных Kaspi");
-            } else {
-                setKaspiOffers(data.offers || []);
-                setLoaded(true);
-            }
-        } catch (e) {
-            setError("Ошибка соединения с сервером");
-        } finally {
+            const xlsx = await import("xlsx");
+            const reader = new FileReader();
+
+            reader.onload = (event) => {
+                try {
+                    const data = new Uint8Array(event.target?.result as ArrayBuffer);
+                    const workbook = xlsx.read(data, { type: "array" });
+                    
+                    if (workbook.SheetNames.length === 0) throw new Error("Excel файл пуст");
+                    
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json: any[] = xlsx.utils.sheet_to_json(firstSheet);
+
+                    const parsedOffers: KaspiOffer[] = json.map(row => {
+                        // Kaspi excel format usually has: SKU, model, brand, price, PP1, PP2, etc.
+                        const sku = row.SKU || row.sku || row.Артикул || "";
+                        const name = row.model || row.Наименование || row.name || "Неизвестно";
+                        
+                        // Sum available quantities across PP columns (e.g. PP1, PP2, PP3...)
+                        let totalQty = 0;
+                        for (const key of Object.keys(row)) {
+                            if (key.toUpperCase().startsWith("PP")) {
+                                const val = row[key];
+                                if (typeof val === "number") totalQty += val;
+                                else if (typeof val === "string" && !isNaN(parseInt(val))) totalQty += parseInt(val);
+                                // if "yes", Kaspi means available but without limit? Usually exact stock is a number.
+                            }
+                        }
+
+                        return {
+                            sku: sku.toString().trim(),
+                            name: name.toString().trim(),
+                            quantity: totalQty
+                        };
+                    }).filter(offer => offer.sku !== "");
+
+                    setKaspiOffers(parsedOffers);
+                    setLoaded(true);
+                } catch (err: any) {
+                    setError("Ошибка при разборе Excel файла: " + err.message);
+                } finally {
+                    setIsLoading(false);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                }
+            };
+            
+            reader.onerror = () => {
+                setError("Ошибка чтения файла");
+                setIsLoading(false);
+            };
+
+            reader.readAsArrayBuffer(file);
+        } catch (e: any) {
+            setError("Ошибка загрузки библиотеки или обработки: " + e.message);
             setIsLoading(false);
         }
     };
@@ -164,13 +213,20 @@ export default function KaspiStockClient({ localProducts }: { localProducts: Loc
                             <Upload className={`w-4 h-4 ${isPushing ? "animate-bounce" : ""}`} />
                             {isPushing ? "Отправка..." : "Обновить остатки в Kaspi"}
                         </button>
+                        <input 
+                            type="file" 
+                            accept=".xls,.xlsx" 
+                            className="hidden" 
+                            ref={fileInputRef} 
+                            onChange={handleFileUpload}
+                        />
                         <button
-                            onClick={loadKaspiOffers}
+                            onClick={() => fileInputRef.current?.click()}
                             disabled={isLoading}
-                            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50 text-sm transition-colors"
+                            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 text-sm transition-colors"
                         >
-                            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-                            {isLoading ? "Загрузка..." : loaded ? "Обновить" : "Загрузить из Kaspi"}
+                            {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+                            {isLoading ? "Обработка..." : loaded ? "Загрузить другой Excel" : "Загрузить Excel-отчет Kaspi"}
                         </button>
                     </div>
                 </div>
@@ -192,8 +248,9 @@ export default function KaspiStockClient({ localProducts }: { localProducts: Loc
 
             {!loaded && !isLoading && (
                 <div className="bg-white rounded-lg shadow p-12 text-center text-gray-400">
-                    <RefreshCw className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                    <p>Нажмите «Загрузить из Kaspi» чтобы получить актуальные остатки</p>
+                    <FileSpreadsheet className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                    <p className="mb-2">Kaspi не отдает список товаров через API.</p>
+                    <p className="text-sm">Скачайте Excel-отчет (Прайс-лист) в кабинете Kaspi и загрузите его сюда для сверки.</p>
                 </div>
             )}
 
