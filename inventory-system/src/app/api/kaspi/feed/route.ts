@@ -59,14 +59,21 @@ export async function GET() {
 
       return Object.entries(groups).map(([sku, data]) => {
         const isAvailable = data.totalQty > 0 || data.maxPreOrderDays > 0 ? "yes" : "no";
-        const stockCount = data.maxPreOrderDays > 0 ? 0 : data.totalQty;
+        
+        let availabilityTag = `<availability available="${isAvailable}" storeId="PP2"`;
+        if (data.maxPreOrderDays > 0) {
+            availabilityTag += ` preOrder="${data.maxPreOrderDays}"`;
+        } else {
+            availabilityTag += ` stockCount="${data.totalQty}"`;
+        }
+        availabilityTag += `/>`;
 
         return `
     <offer sku="${sku}">
       <model>${escapeXml(data.name)}</model>
       <brand>Dimmiani</brand>
       <availabilities>
-        <availability available="${isAvailable}" storeId="PP2" preOrder="${data.maxPreOrderDays}" stockCount="${stockCount}"/>
+        ${availabilityTag}
       </availabilities>
       <price>${data.price}</price>
     </offer>`;

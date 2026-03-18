@@ -34,10 +34,20 @@ export async function POST(request: Request) {
 
         // Build the stockInfo payload for Kaspi API
         // Kaspi v2 API: POST /offers/stockInfo/ with JSON:API body
-        const offerStockList = products.map((p) => ({
-            sku: p.kaspiSku!,
-            availableQuantity: Math.max(0, p.quantity),
-        }));
+        const offerStockList = products.map((p) => {
+            const preOrderDays = (p as any).preOrderDays || 0;
+            const payload: any = {
+                sku: p.kaspiSku!,
+            };
+            
+            if (preOrderDays > 0) {
+                payload.preOrder = preOrderDays;
+            } else {
+                payload.availableQuantity = Math.max(0, p.quantity);
+            }
+            
+            return payload;
+        });
 
         const body = {
             data: {
