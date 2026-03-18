@@ -8,9 +8,8 @@ export default async function ArchivePage() {
     const session = await getServerSession(authOptions);
     const userRole = (session?.user as any)?.role || "USER";
 
-    const whereClause: any = {
-        status: "ARCHIVED"
-    };
+    // Show all non-empty orders since the user treats Archive as a complete sales ledger
+    const whereClause: any = {};
 
     if (userRole === "COURIER") {
         whereClause.deliveryMethod = "ALMATY_COURIER";
@@ -19,8 +18,8 @@ export default async function ArchivePage() {
     const archivedOrders = await prisma.order.findMany({
         where: whereClause,
         include: { items: true },
-        orderBy: { updatedAt: "desc" },
-        take: 200
+        orderBy: { createdAt: "desc" }, // Sort by creation date (deduction date) rather than randomly jumping up on status change
+        take: 300
     });
 
     function getSourceBadge(source: string) {
@@ -45,6 +44,20 @@ export default async function ArchivePage() {
         );
     }
 
+    function getStatusBadge(status: string) {
+        switch (status) {
+            case "PENDING": return <span className="text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded text-xs">В обработке</span>;
+            case "SHIPPED": return <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded text-xs">В пути</span>;
+            case "READY_FOR_PICKUP": return <span className="text-purple-600 bg-purple-50 px-2 py-0.5 rounded text-xs">Ждет выдачи</span>;
+            case "DELIVERING": return <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-xs">Доставляется</span>;
+            case "COMPLETED": 
+            case "ARCHIVED": return <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs">Завершен</span>;
+            case "CANCELLED": return <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded text-xs">Отменен</span>;
+            case "RETURNED": return <span className="text-red-700 bg-red-100 px-2 py-0.5 rounded text-xs">Возврат</span>;
+            default: return <span className="text-gray-600 bg-gray-100 px-2 py-0.5 rounded text-xs">{status}</span>;
+        }
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -60,6 +73,7 @@ export default async function ArchivePage() {
                         <tr>
                             <th className="px-4 py-3">Дата</th>
                             <th className="px-4 py-3">Номер</th>
+                            <th className="px-4 py-3">Статус</th>
                             <th className="px-4 py-3">Источник</th>
                             <th className="px-4 py-3">Клиент</th>
                             <th className="px-4 py-3">Товары</th>
@@ -80,7 +94,12 @@ export default async function ArchivePage() {
                                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                                         {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm")}
                                     </td>
-                                    <td className="px-4 py-3 font-medium">{order.orderNumber}</td>
+                                    <td className="px-4 py-3">
+                                        <div className="font-medium">{order.orderNumber}</div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        {getStatusBadge(order.status)}
+                                    </td>
                                     <td className="px-4 py-3">
                                         {getSourceBadge(order.source || "POS")}
                                     </td>
