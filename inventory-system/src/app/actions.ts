@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { generateEAN13 } from "@/lib/utils";
 import { getPrintLabel } from "@/lib/cdek";
 import { getKaspiOrders } from "@/lib/kaspi";
+import { getHalykOrders } from "@/lib/halyk";
 
 export async function createProduct(formData: FormData) {
     const name = formData.get("name") as string;
@@ -769,3 +770,164 @@ export async function getKaspiLabelUrl(orderId: string): Promise<{ error?: strin
     return { error: "Печать накладных Kaspi: API еще не подключен (требуется assembly)" };
 }
 
+export async function syncHalykOrders() {
+    try {
+        const halykOrders = await getHalykOrders(14); // Fetch last 14 days
+        let addedCount = 0;
+
+        for (const hOrder of halykOrders) {
+            // Map Status
+            let status = "PENDING";
+            // Halyk status mapping
+            if (hOrder.status === "APPROVED_BY_BANK") status = "PENDING";
+            if (hOrder.status === "WAITING_COURIER") status = "READY_FOR_PICKUP";
+            if (hOrder.status === "DELIVERY_IN_PROGRESS") status = "SHIPPED";
+            if (hOrder.status === "DELIVERED" || hOrder.status === "DONE") status = "COMPLETED"; // Or ARCHIVED
+            if (hOrder.status === "CANCELED" || hOrder.status === "CANCELLED" || hOrder.status === "RETURNED") status = "CANCELLED";
+
+            // Support checking if order exists
+            const existing = await prisma.order.findUnique({
+                where: { orderNumber: hOrder.code }
+            });
+
+            if (existing) {
+                const localIsFinished = ["COMPLETED", "ARCHIVED", "CANCELLED", "RETURNED"].includes(existing.status);
+                const halykIsPending = status === "PENDING" || status === "READY_FOR_PICKUP";
+
+                if (localIsFinished && halykIsPending) continue;
+
+                if (existing.status !== status) {
+                    await prisma.$transaction(async (tx) => {
+                        await tx.order.update({
+                            where: { id: existing.id },
+                            data: { status }
+                        });
+
+                        const wasActive = ["PENDING", "SHIPPED", "READY_FOR_PICKUP", "COMPLETED"].includes(existing.status);
+                        const isCancelled = ["CANCELLED", "RETURNED"].includes(status);
+
+                        if (wasActive && isCancelled) {
+                            const items = await tx.orderItem.findMany({ where: { orderId: existing.id } });
+                            for (const item of items) {
+                                if (item.productId) {
+                                    await tx.product.update({
+                                        where: { id: item.productId },
+                                        data: { quantity: { increment: item.quantity } }
+                                    });
+                                    await tx.transaction.create({
+                                        data: { type: "IN", quantity: item.quantity, productId: item.productId }
+                                    });
+                                }
+                            }
+                            await tx.orderHistory.create({
+                                data: {
+                                    orderId: existing.id,
+                                    action: "STATUS_CHANGE",
+                                    details: `Заказ Халык отменён, остатки возвращены на склад`
+                                }
+                            });
+                        }
+                    });
+                }
+                continue;
+            }
+
+            const finishedStatuses = ["COMPLETED", "RETURNED", "CANCELLED", "ARCHIVED", "DELIVERED"];
+            if (finishedStatuses.includes(status) || finishedStatuses.includes(hOrder.status)) {
+                continue; // Skip heavily history ones if not tracked yet
+            }
+
+            let deliveryMethod = hOrder.deliveryMode === "PHYSICAL_PICKUP" ? "PICKUP" : "HALYK";
+
+            const orderItemsPayload: any[] = [];
+            let hasAnyUnknown = true;
+
+            for (const entry of hOrder.entries) {
+                const sku = entry.skuCode || "UNKNOWN";
+                let productId = null;
+                let name = entry.skuName || "Товар Halyk";
+                let size = null;
+
+                if (sku && sku !== "UNKNOWN") {
+                    hasAnyUnknown = false;
+                    const localProduct = await prisma.product.findFirst({
+                        where: { OR: [{ kaspiSku: sku }, { sku: sku }] }
+                    });
+                    if (localProduct) {
+                        name = localProduct.name;
+                        size = localProduct.size;
+                        productId = localProduct.id;
+                    } else {
+                        console.warn(`Halyk order ${hOrder.code}: product SKU "${sku}" not found locally.`);
+                    }
+                }
+
+                orderItemsPayload.push({
+                    productId,
+                    name,
+                    quantity: entry.skuQuantity,
+                    price: entry.skuPrice,
+                    sku,
+                    size
+                });
+            }
+
+            if (hasAnyUnknown && orderItemsPayload.every(i => i.sku === "UNKNOWN")) {
+                console.log(`Skipping dummy order ${hOrder.code}`);
+                continue;
+            }
+
+            await prisma.$transaction(async (tx) => {
+                const createdOrder = await tx.order.create({
+                    data: {
+                        orderNumber: hOrder.code,
+                        clientName: hOrder.customer ? `${hOrder.customer.firstName} ${hOrder.customer.lastName}` : "Halyk Client",
+                        clientPhone: hOrder.customer?.cellPhone || "",
+                        city: hOrder.deliveryAddress?.city || "Almaty",
+                        address: hOrder.deliveryAddress?.formattedAddress || "",
+                        comment: "Заказ из Halyk — списано автоматически",
+                        deliveryMethod: deliveryMethod,
+                        paymentMethod: hOrder.paymentMode,
+                        totalAmount: hOrder.totalPrice,
+                        status: status,
+                        createdAt: new Date(hOrder.creationDate),
+                        source: "HALYK",
+                        items: { create: orderItemsPayload }
+                    }
+                });
+
+                const unmatchedItems = orderItemsPayload.filter(i => !i.productId).map(i => i.name);
+                await tx.orderHistory.create({
+                    data: {
+                        orderId: createdOrder.id,
+                        action: "CREATED",
+                        details: unmatchedItems.length > 0
+                            ? `Не найдены в инвентори: ${unmatchedItems.join(", ")}. Добавьте kaspiSku к товарам.`
+                            : "Заказ из Halyk — все товары сопоставлены"
+                    }
+                });
+
+                for (const item of orderItemsPayload) {
+                    if (item.productId) {
+                        await tx.product.update({
+                            where: { id: item.productId },
+                            data: { quantity: { decrement: item.quantity } }
+                        });
+                        await tx.transaction.create({
+                            data: { type: "OUT", quantity: item.quantity, productId: item.productId }
+                        });
+                    }
+                }
+            });
+            addedCount++;
+        }
+
+        revalidatePath("/daily-plan");
+        revalidatePath("/halyk");
+        revalidatePath("/archive");
+        return { success: true, added: addedCount, total: halykOrders.length };
+    } catch (e: any) {
+        console.error("Halyk Sync Error:", e);
+        return { error: e.message || "Ошибка синхронизации" };
+    }
+}
