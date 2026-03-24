@@ -9,6 +9,7 @@ interface Product {
     name: string;
     sku: string;
     kaspiSku: string | null;
+    halykUrl: string | null;
     size: string | null;
     price: number;
     quantity: number;
@@ -30,6 +31,7 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
         name: product.name,
         sku: product.sku,
         kaspiSku: product.kaspiSku || "",
+        halykUrl: product.halykUrl || "",
         size: product.size || "",
         price: product.price.toString(),
         quantity: product.quantity.toString(),
@@ -168,6 +170,18 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                                     className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-mono"
                                     value={form.kaspiSku}
                                     onChange={e => setForm({ ...form, kaspiSku: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="col-span-2">
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Ссылка или Артикул Halyk Market</label>
+                                <input
+                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-mono"
+                                    value={form.halykUrl}
+                                    onChange={e => setForm({ ...form, halykUrl: e.target.value })}
+                                    placeholder="https://halykmarket.kz/..."
                                 />
                             </div>
                         </div>

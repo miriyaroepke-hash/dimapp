@@ -76,6 +76,7 @@ export async function updateProduct(id: number, data: any) {
                 name: data.name,
                 sku: data.sku,
                 kaspiSku: data.kaspiSku || null,
+                halykUrl: data.halykUrl || null,
                 size: data.size || null,
                 price: data.price,
                 quantity: data.quantity,

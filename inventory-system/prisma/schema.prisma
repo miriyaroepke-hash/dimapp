@@ -33,6 +33,7 @@ model Product {
   price         Float
   sku           String   @unique // Barcode
   kaspiSku      String?  // SKU specific to Kaspi
+  halykUrl      String?  // Direct link or SKU for Halyk Market
   image         String?  // Base64 or URL
   quantity      Int      @default(0)
   preOrderDays  Int?     // If set, Kaspi shows this as pre-order with N days lead time
@@ -122,4 +123,36 @@ model OrderHistory {
   action    String   // CREATED, UPDATED, STATUS_CHANGE, SENT_TO_CDEK
   details   String?  // Description of change
   createdAt DateTime @default(now())
+}
+
+model Balance {
+  id        Int      @id @default(1)
+  amount    Float    @default(0)
+  updatedAt DateTime
+}
+
+model Credit {
+  id             Int      @id @default(autoincrement())
+  name           String
+  principal      Float
+  dailyPayment   Float
+  monthlyPayment Float
+  startDate      DateTime
+  durationMonths Int
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+}
+
+model SiteContent {
+  id          Int      @id @default(1)
+  text_ru     String?  @db.Text
+  text_kz     String?  @db.Text
+  photo1      String?
+  photo2      String?
+  video_url   String?
+  returns_ru  String?  @db.Text
+  returns_kz  String?  @db.Text
+  contacts_ru String?  @db.Text
+  contacts_kz String?  @db.Text
+  updatedAt   DateTime @default(now()) @updatedAt
 }
