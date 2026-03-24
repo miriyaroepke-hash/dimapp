@@ -25,6 +25,7 @@ interface EditProductModalProps {
 export default function EditProductModal({ product, onClose, onSuccess }: EditProductModalProps) {
     const [loading, setLoading] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [applyImageToAll, setApplyImageToAll] = useState(false);
     const [form, setForm] = useState({
         name: product.name,
         sku: product.sku,
@@ -56,6 +57,7 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
             }
 
             setForm({ ...form, image: data.url });
+            setApplyImageToAll(true); // Auto-check to save user time
         } catch (error) {
             console.error("Image upload failed", error);
             alert("Не удалось загрузить фото. Попробуйте ещё раз.");
@@ -76,6 +78,7 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
             price: parseFloat(form.price),
             quantity: parseInt(form.quantity),
             preOrderDays: parseInt(form.preOrderDays) || 0,
+            applyImageToAll
         });
         setLoading(false);
 
@@ -100,7 +103,7 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {/* Image Upload */}
-                    <div className="flex justify-center">
+                    <div className="flex flex-col items-center gap-2">
                         <label className="w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer bg-gray-50 hover:bg-gray-100 relative overflow-hidden group">
                             {uploadingImage ? (
                                 <div className="flex flex-col items-center text-blue-500">
@@ -127,6 +130,16 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                                 onChange={handleImageUpload}
                                 disabled={uploadingImage}
                             />
+                        </label>
+                        
+                        <label className="flex items-center gap-2 text-xs text-gray-600 mt-1 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                className="rounded text-blue-600"
+                                checked={applyImageToAll}
+                                onChange={(e) => setApplyImageToAll(e.target.checked)}
+                            />
+                            Применить ко всем размерам "{form.name}"
                         </label>
                     </div>
 

@@ -83,6 +83,12 @@ export async function updateProduct(id: number, data: any) {
                 image: data.image
             }
         });
+        if (data.applyImageToAll && data.image) {
+            await prisma.product.updateMany({
+                where: { name: data.name, id: { not: id } },
+                data: { image: data.image }
+            });
+        }
         revalidatePath("/inventory");
         return { success: true };
     } catch (e: any) {
