@@ -13,6 +13,7 @@ interface Product {
     name: string;
     sku: string;
     kaspiSku: string | null;
+    halykUrl: string | null;
     size: string | null;
     price: number;
     quantity: number;
