@@ -150,6 +150,8 @@ model SiteContent {
   photo1      String?
   photo2      String?
   video_url   String?
+  video2_url  String?
+  video3_url  String?
   returns_ru  String?  @db.Text
   returns_kz  String?  @db.Text
   contacts_ru String?  @db.Text
