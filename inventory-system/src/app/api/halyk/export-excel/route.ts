@@ -8,7 +8,7 @@ export async function GET() {
 
         // Halyk requires exact columns: SKU, Name, Category, Price, LoanPeriod, Dimmiani_pp1
         const exportData = products
-            .filter((p: any) => p.kaspiSku) // Only export items that have kaspiSku (Halyk identifier)
+            .filter((p: any) => p.kaspiSku && p.quantity > 0) // Only export items that have kaspiSku AND positive stock
             .map((p: any) => {
                 const fullName = p.size ? `${p.name} ${p.size}` : p.name;
                 return {

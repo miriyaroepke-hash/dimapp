@@ -25,12 +25,49 @@ export interface HalykOrder {
     }[];
 }
 
+export async function getHalykOAuthToken(): Promise<string | null> {
+    const clientId = process.env.HALYK_CLIENT_ID;
+    const clientSecret = process.env.HALYK_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+        console.error("HALYK_CLIENT_ID or HALYK_CLIENT_SECRET missing");
+        return null;
+    }
+
+    try {
+        const res = await fetch("https://halykmarket.kz/gw/auth/token", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                grant_type: "client_credentials",
+                client_id: clientId,
+                client_secret: clientSecret
+            }),
+            // Use cache: 'no-store' to ensure we don't return a stale, expired token
+            cache: 'no-store'
+        });
+
+        if (!res.ok) {
+            console.error("Failed to fetch Halyk OAuth token", await res.text());
+            return null;
+        }
+
+        const data = await res.json();
+        return data.access_token;
+    } catch (e) {
+        console.error("Error fetching Halyk OAuth token", e);
+        return null;
+    }
+}
+
 export async function getHalykOrders(daysBack: number = 7): Promise<HalykOrder[]> {
-    const HALYK_TOKEN = process.env.HALYK_API_TOKEN;
+    const HALYK_TOKEN = await getHalykOAuthToken();
     const HALYK_API_URL = "https://halykmarket.kz/gw/merchant/public";
 
     if (!HALYK_TOKEN) {
-        console.error("HALYK_API_TOKEN missing");
+        console.error("Unable to get Halyk OAuth Token for orders");
         return [];
     }
 
