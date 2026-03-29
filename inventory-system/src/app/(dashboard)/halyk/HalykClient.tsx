@@ -203,9 +203,24 @@ export default function HalykClient({ orders }: { orders: Order[] }) {
                             className="flex items-center px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm transition-colors"
                         >
                             <Download className="w-4 h-4 mr-2" />
-                            Открыть
+                            Открыть XML
                         </a>
                     </div>
+                </div>
+
+                <div className="p-4 border rounded bg-blue-50 border-blue-200 mt-4">
+                    <h3 className="font-bold text-blue-700 mb-2">Ручная выгрузка (Excel)</h3>
+                    <p className="text-sm text-blue-900/80 mb-4">
+                        Если поддержка Halyk Market всё же требует от вас загружать каталог файлом вручную, нажмите кнопку ниже, чтобы получить готовый Excel файл:
+                    </p>
+                    <a
+                        href="/api/halyk/export-excel"
+                        download
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium text-sm transition-colors"
+                    >
+                        <Download className="w-4 h-4 mr-2" />
+                        Скачать Excel-каталог
+                    </a>
                 </div>
             </div>
         </div>
