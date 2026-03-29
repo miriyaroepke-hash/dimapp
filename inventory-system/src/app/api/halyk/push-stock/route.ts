@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { generateHalykXml, getHalykOAuthToken } from "@/lib/halyk";
 
 export async function POST(request: Request) {
-    const HALYK_TOKEN = await getHalykOAuthToken();
+    const { token: HALYK_TOKEN, error: authError } = await getHalykOAuthToken();
     
     // According to Halyk Market Docs, the production domain is api.halykmarket.com
     const possibleDomain = "https://api.halykmarket.com"; 
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     const fallbackDomain = "https://api.halykmarket.kz";
 
     if (!HALYK_TOKEN) {
-        return NextResponse.json({ error: "Не удалось получить OAuth токен. Проверьте HALYK_CLIENT_ID и SECRET." }, { status: 500 });
+        return NextResponse.json({ error: `Ошибка авторизации Halyk: ${authError}` }, { status: 500 });
     }
 
     try {

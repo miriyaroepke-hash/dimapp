@@ -25,13 +25,12 @@ export interface HalykOrder {
     }[];
 }
 
-export async function getHalykOAuthToken(): Promise<string | null> {
+export async function getHalykOAuthToken(): Promise<{ token: string | null, error: string | null }> {
     const clientId = process.env.HALYK_CLIENT_ID;
     const clientSecret = process.env.HALYK_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-        console.error("HALYK_CLIENT_ID or HALYK_CLIENT_SECRET missing");
-        return null;
+        return { token: null, error: "Ключи (HALYK_CLIENT_ID или SECRET) отсутствуют в настройках Vercel." };
     }
 
     try {
@@ -42,32 +41,30 @@ export async function getHalykOAuthToken(): Promise<string | null> {
             },
             body: JSON.stringify({
                 grant_type: "client_credentials",
-                client_id: clientId,
-                client_secret: clientSecret
+                client_id: clientId.trim(),
+                client_secret: clientSecret.trim()
             }),
-            // Use cache: 'no-store' to ensure we don't return a stale, expired token
             cache: 'no-store'
         });
 
+        const text = await res.text();
         if (!res.ok) {
-            console.error("Failed to fetch Halyk OAuth token", await res.text());
-            return null;
+            return { token: null, error: `Халык сервер ответил ошибкой: ${res.status} - ${text}` };
         }
 
-        const data = await res.json();
-        return data.access_token;
-    } catch (e) {
-        console.error("Error fetching Halyk OAuth token", e);
-        return null;
+        const data = JSON.parse(text);
+        return { token: data.access_token, error: null };
+    } catch (e: any) {
+        return { token: null, error: `Внутренняя ошибка запроса: ${e.message}` };
     }
 }
 
 export async function getHalykOrders(daysBack: number = 7): Promise<HalykOrder[]> {
-    const HALYK_TOKEN = await getHalykOAuthToken();
+    const { token: HALYK_TOKEN, error: authError } = await getHalykOAuthToken();
     const HALYK_API_URL = "https://halykmarket.kz/gw/merchant/public";
 
     if (!HALYK_TOKEN) {
-        console.error("Unable to get Halyk OAuth Token for orders");
+        console.error("Unable to get Halyk OAuth Token for orders:", authError);
         return [];
     }
 
