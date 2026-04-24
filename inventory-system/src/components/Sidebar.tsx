@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingCart, Settings, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Settings, LogOut, Menu, X, Monitor, Store } from "lucide-react";
 import { useState } from "react";
 import { signOut } from "next-auth/react";
 import clsx from "clsx";
@@ -10,13 +10,13 @@ import clsx from "clsx";
 const navItems = [
     { name: "План дня", href: "/daily-plan", icon: LayoutDashboard },
     { name: "Склад", href: "/inventory", icon: Package },
+    { name: "Шоурум", href: "/showroom", icon: Store },
+    { name: "Витрина", href: "/storefront", icon: Store },
     { name: "Инвентаризация", href: "/stock-check", icon: ShoppingCart },
     { name: "Заказы", href: "/orders", icon: ShoppingCart },
     { name: "Архив", href: "/archive", icon: Package },
-    { name: "Kaspi", href: "/kaspi", icon: ShoppingCart },
-    { name: "Халык", href: "/halyk", icon: ShoppingCart },
-    { name: "Сравнение остатков", href: "/kaspi-stock", icon: ShoppingCart },
     { name: "Пользователи", href: "/users", icon: Settings },
+    { name: "Конструктор сайта", href: "/cms", icon: Monitor },
 ];
 
 

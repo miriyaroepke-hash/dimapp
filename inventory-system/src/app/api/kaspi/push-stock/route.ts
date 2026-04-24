@@ -32,18 +32,27 @@ export async function POST(request: Request) {
             });
         }
 
+        // Group products by kaspiSku to sum up available quantities
+        const groups: Record<string, { totalQty: number, maxPreOrderDays: number }> = {};
+
+        products.forEach(p => {
+            const sku = p.kaspiSku!.trim();
+            if (p.quantity < 0) return; // Ignore negative stock
+            if (!groups[sku]) {
+                groups[sku] = { totalQty: 0, maxPreOrderDays: 0 };
+            }
+            groups[sku].totalQty += Math.max(0, p.quantity);
+            groups[sku].maxPreOrderDays = Math.max(groups[sku].maxPreOrderDays, (p as any).preOrderDays || 0);
+        });
+
         // Build the stockInfo payload for Kaspi API
-        // Kaspi v2 API: POST /offers/stockInfo/ with JSON:API body
-        const offerStockList = products.map((p) => {
-            const preOrderDays = (p as any).preOrderDays || 0;
-            const payload: any = {
-                sku: p.kaspiSku!,
-            };
+        const offerStockList = Object.entries(groups).map(([sku, data]) => {
+            const payload: any = { sku };
             
-            if (preOrderDays > 0) {
-                payload.preOrder = preOrderDays;
+            if (data.maxPreOrderDays > 0) {
+                payload.preOrder = data.maxPreOrderDays;
             } else {
-                payload.availableQuantity = Math.max(0, p.quantity);
+                payload.availableQuantity = data.totalQty;
             }
             
             return payload;

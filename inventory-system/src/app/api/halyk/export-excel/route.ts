@@ -6,9 +6,9 @@ export async function GET() {
     try {
         const products = await prisma.product.findMany();
 
-        // Halyk requires exact columns: SKU, Name, Category, Price, LoanPeriod, Dimmiani_pp1
+        // Halyk export format with direct links from DB
         const exportData = products
-            .filter((p: any) => p.kaspiSku && p.quantity > 0) // Only export items that have kaspiSku AND positive stock
+            .filter((p: any) => p.kaspiSku && p.quantity > 0)
             .map((p: any) => {
                 const fullName = p.size ? `${p.name} ${p.size}` : p.name;
                 return {
@@ -16,8 +16,9 @@ export async function GET() {
                     "Name": fullName,
                     "Category": "",
                     "Price": p.price,
-                    "LoanPeriod": 12, // User explicitly requested 12
-                    "Dimmiani_pp1": p.quantity || 0,
+                    "LoanPeriod": 12,
+                    "Test_pp1": p.quantity || 0,
+                    "Kaspi Link": p.kaspiUrl || "",
                 };
             });
 
@@ -30,7 +31,8 @@ export async function GET() {
             { wch: 15 }, // Category
             { wch: 10 }, // Price
             { wch: 12 }, // LoanPeriod
-            { wch: 15 }, // Dimmiani_pp1
+            { wch: 15 }, // Test_pp1
+            { wch: 40 }, // Kaspi Link
         ];
 
         XLSX.utils.book_append_sheet(workbook, worksheet, "Halyk Catalog");

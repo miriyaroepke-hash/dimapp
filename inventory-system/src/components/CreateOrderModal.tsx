@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, X, Search, ShoppingBag, Upload } from "lucide-react";
 import { createOrder } from "@/app/actions";
 import { compressImage, formatCdekPhone, isValidCdekPhone } from "@/lib/utils";
@@ -29,8 +29,8 @@ interface CartItem {
 }
 
 interface CreateOrderModalProps {
-    products: Product[];
     onClose: () => void;
+    isQuickSale?: boolean;
 }
 
 const DELIVERY_METHODS = [
@@ -42,8 +42,11 @@ const DELIVERY_METHODS = [
     { value: "YANDEX", label: "Яндекс" },
 ];
 
-export default function CreateOrderModal({ products, onClose }: CreateOrderModalProps) {
+export default function CreateOrderModal({ onClose, isQuickSale = false }: CreateOrderModalProps) {
     const [searchTerm, setSearchTerm] = useState("");
+    const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
     const [cart, setCart] = useState<CartItem[]>([]);
     const [deliveryMethod, setDeliveryMethod] = useState("PICKUP");
     const [loading, setLoading] = useState(false);
@@ -64,13 +67,26 @@ export default function CreateOrderModal({ products, onClose }: CreateOrderModal
     const [paymentMethod, setPaymentMethod] = useState("");
     const [codAmount, setCodAmount] = useState("");
 
-    const filteredProducts = searchTerm
-        ? products.filter(p =>
-            (p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                p.sku.includes(searchTerm)) &&
-            p.quantity > 0
-        ).slice(0, 20) // Increased limit for better search results
-        : [];
+    // Fetch products from API as user types (debounced)
+    useEffect(() => {
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        if (searchTerm.length < 2) {
+            setFilteredProducts([]);
+            return;
+        }
+        setIsSearching(true);
+        searchTimerRef.current = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/products/search?q=${encodeURIComponent(searchTerm)}`);
+                const data = await res.json();
+                setFilteredProducts(data);
+            } catch {
+                setFilteredProducts([]);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300);
+    }, [searchTerm]);
 
     const addToCart = (product: Product) => {
         setCart(prev => {
@@ -204,7 +220,9 @@ export default function CreateOrderModal({ products, onClose }: CreateOrderModal
             codAmount: deliveryMethod === "CDEK" && codAmount ? parseFloat(codAmount) : undefined
         };
 
-        const result = await createOrder(payload, deliveryMethod, customer, payment, "POS");
+        const source = isQuickSale ? "SHOWROOM_POS" : "POS";
+
+        const result = await createOrder(payload, deliveryMethod, customer, payment, source);
 
         if (result.success) {
             onClose();
@@ -316,6 +334,12 @@ export default function CreateOrderModal({ products, onClose }: CreateOrderModal
                                         <p>Введите название или SKU товара</p>
                                     </div>
                                 )}
+                                {searchTerm.length === 1 && (
+                                    <div className="text-center text-gray-400 py-4 text-sm">Введите ещё символ...</div>
+                                )}
+                                {isSearching && (
+                                    <div className="text-center text-gray-400 py-4 text-sm">Поиск...</div>
+                                )}
                                 <div className="flex-1 overflow-y-auto space-y-2">
                                     {filteredProducts.map(product => (
                                         <button
@@ -397,104 +421,126 @@ export default function CreateOrderModal({ products, onClose }: CreateOrderModal
 
                             <div className="border-t pt-2"></div>
 
-                            {/* Delivery Method */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Способ доставки</label>
+                            {/* CUSTOMER INFO - Hidden for Quick Sale */}
+                            {!isQuickSale && (
+                                <>
+                                    <div className="font-bold text-lg mb-2 pt-4 border-t">Клиент</div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">ФИО</label>
+                                            <input
+                                                type="text"
+                                                value={customerName}
+                                                onChange={e => setCustomerName(e.target.value)}
+                                                className="w-full border p-2 rounded"
+                                                placeholder="Иванов Иван"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Телефон 🇰🇿</label>
+                                            <input
+                                                type="text"
+                                                value={customerPhone}
+                                                onChange={e => {
+                                                    let val = e.target.value;
+                                                    if (!val.startsWith("+7")) {
+                                                        val = "+7" + val.replace(/^\+?7?/, "");
+                                                    }
+                                                    setCustomerPhone(val);
+                                                }}
+                                                className={`w-full border p-2 rounded`}
+                                                placeholder="+77771234567"
+                                            />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* DELIVERY & PAYMENT */}
+                            {!isQuickSale && (
+                                <div className="font-bold text-lg mb-2 pt-4 border-t">Доставка</div>
+                            )}
+                            
+                            {!isQuickSale ? (
                                 <select
                                     value={deliveryMethod}
-                                    onChange={(e) => setDeliveryMethod(e.target.value)}
-                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-purple-500"
+                                    onChange={e => setDeliveryMethod(e.target.value)}
+                                    className="w-full border p-2 rounded mb-4 font-medium"
                                 >
                                     {DELIVERY_METHODS.map(m => (
                                         <option key={m.value} value={m.value}>{m.label}</option>
                                     ))}
                                 </select>
-                            </div>
+                            ) : (
+                                <div className="font-bold text-lg mb-2 pt-4 border-t">Оплата Быстрой Продажи</div>
+                            )}
 
-                            {/* Customer Details */}
-                            <div className="space-y-3 bg-gray-100 p-3 rounded">
-                                <h3 className="font-bold text-sm text-gray-700">Данные клиента</h3>
-                                <input
-                                    type="text"
-                                    placeholder="ФИО"
-                                    className="w-full p-2 border rounded text-sm"
-                                    value={customerName}
-                                    onChange={e => setCustomerName(e.target.value)}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="+7"
-                                    className="w-full p-2 border rounded text-sm"
-                                    value={customerPhone}
-                                    onChange={e => {
-                                        let val = e.target.value;
-                                        if (!val.startsWith("+7")) {
-                                            val = "+7" + val.replace(/^\+?7?/, "");
-                                        }
-                                        setCustomerPhone(val);
-                                    }}
-                                />
+                            {/* Customer Details - Render only if NOT Quick Sale */}
+                            {!isQuickSale && (
+                                <div className="space-y-3 bg-gray-100 p-3 rounded">
+                                    <h3 className="font-bold text-sm text-gray-700">Данные доставки</h3>
 
-                                {deliveryMethod !== "PICKUP" && (
-                                    <>
-                                        {deliveryMethod === "CDEK" ? (
-                                            <div className="space-y-2">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Город"
-                                                    className="w-full p-2 border rounded text-sm"
-                                                    value={city}
-                                                    onChange={e => setCity(e.target.value)}
-                                                />
-                                                <div className="flex gap-2">
+                                    {deliveryMethod !== "PICKUP" && (
+                                        <>
+                                            {deliveryMethod === "CDEK" ? (
+                                                <div className="space-y-2">
                                                     <input
                                                         type="text"
-                                                        placeholder="Улица"
-                                                        className="flex-1 p-2 border rounded text-sm"
-                                                        value={street}
-                                                        onChange={e => setStreet(e.target.value)}
+                                                        placeholder="Город"
+                                                        className="w-full p-2 border rounded text-sm"
+                                                        value={city}
+                                                        onChange={e => setCity(e.target.value)}
                                                     />
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Дом"
-                                                        className="w-20 p-2 border rounded text-sm"
-                                                        value={house}
-                                                        onChange={e => setHouse(e.target.value)}
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Кв/Оф"
-                                                        className="w-16 p-2 border rounded text-sm"
-                                                        value={apt}
-                                                        onChange={e => setApt(e.target.value)}
-                                                    />
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Улица"
+                                                            className="flex-1 p-2 border rounded text-sm"
+                                                            value={street}
+                                                            onChange={e => setStreet(e.target.value)}
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Дом"
+                                                            className="w-20 p-2 border rounded text-sm"
+                                                            value={house}
+                                                            onChange={e => setHouse(e.target.value)}
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Кв/Оф"
+                                                            className="w-16 p-2 border rounded text-sm"
+                                                            value={apt}
+                                                            onChange={e => setApt(e.target.value)}
+                                                        />
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ) : (
-                                            <textarea
-                                                placeholder="Адрес доставки"
-                                                className="w-full p-2 border rounded text-sm h-20"
-                                                value={simpleAddress}
-                                                onChange={e => setSimpleAddress(e.target.value)}
-                                            />
-                                        )}
-                                    </>
-                                )}
+                                            ) : (
+                                                <textarea
+                                                    placeholder="Адрес доставки"
+                                                    className="w-full p-2 border rounded text-sm h-20"
+                                                    value={simpleAddress}
+                                                    onChange={e => setSimpleAddress(e.target.value)}
+                                                />
+                                            )}
+                                        </>
+                                    )}
 
-                                {deliveryMethod === "POST" && (
-                                    <div className="mt-2">
-                                        <label className="block text-sm font-medium text-gray-700">Индекс (Казпочта) *</label>
-                                        <input
-                                            type="text"
-                                            placeholder="000000"
-                                            maxLength={6}
-                                            className="w-full p-2 border border-gray-300 rounded text-sm mt-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                                            value={postalCode}
-                                            onChange={e => setPostalCode(e.target.value)}
-                                        />
-                                    </div>
-                                )}
-                            </div>
+                                    {deliveryMethod === "POST" && (
+                                        <div className="mt-2">
+                                            <label className="block text-sm font-medium text-gray-700">Индекс (Казпочта) *</label>
+                                            <input
+                                                type="text"
+                                                placeholder="000000"
+                                                maxLength={6}
+                                                className="w-full p-2 border border-gray-300 rounded text-sm mt-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                                value={postalCode}
+                                                onChange={e => setPostalCode(e.target.value)}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Payment Details */}
                             <div className="space-y-3 bg-gray-100 p-3 rounded">

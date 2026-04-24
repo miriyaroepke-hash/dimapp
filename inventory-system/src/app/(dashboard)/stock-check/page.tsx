@@ -2,9 +2,13 @@ import prisma from "@/lib/prisma";
 import StockCheck from "@/components/StockCheck";
 
 export default async function StockCheckPage() {
-    // Fetch all products with positive stock for the system baseline
     const systemStock = await prisma.product.findMany({
-        where: { quantity: { gt: 0 } },
+        where: { 
+            OR: [
+                { quantity: { gt: 0 } },
+                { quantityShowroom: { gt: 0 } }
+            ]
+        },
         orderBy: { name: "asc" }
     });
 

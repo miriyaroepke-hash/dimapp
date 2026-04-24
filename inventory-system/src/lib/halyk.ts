@@ -210,7 +210,8 @@ export async function generateHalykXml() {
         name: string,
         price: number,
         totalQty: number,
-        maxPreOrderDays: number
+        maxPreOrderDays: number,
+        sizes: string[]
     }> = {};
 
     products.forEach(p => {
@@ -220,39 +221,51 @@ export async function generateHalykXml() {
                 name: p.name,
                 price: p.price,
                 totalQty: 0,
-                maxPreOrderDays: 0
+                maxPreOrderDays: 0,
+                sizes: []
             };
+        }
+        if(p.size && !groups[sku].sizes.includes(p.size)) {
+            groups[sku].sizes.push(p.size);
         }
         groups[sku].totalQty += Math.max(0, p.quantity);
         groups[sku].maxPreOrderDays = Math.max(groups[sku].maxPreOrderDays, (p as any).preOrderDays || 0);
         groups[sku].price = p.price;
     });
 
-    const offersXml = Object.entries(groups).map(([sku, data]) => {
-        const isAvailable = data.totalQty > 0 || data.maxPreOrderDays > 0 ? "yes" : "no";
-        
-        let stockTag = `<stock storeId="PP1" available="${isAvailable}"`;
+    // Формат даты как в успешном фиде: "2026-04-02 09:17"
+    const now = new Date();
+    const dateStr = now.toISOString().replace('T', ' ').slice(0, 16);
+
+    // Числовой merchantid из HALYK_CLIENT_ID (убираем буквенный префикс HMM_)
+    const merchantNumericId = (process.env.HALYK_CLIENT_ID || 'Dimmiani').replace(/^[A-Z_]+/, '');
+
+    const offersXml = Object.entries(groups).filter(([sku, data]) => data.totalQty > 0 && data.price > 0).map(([sku, data]) => {
+        // Appending the first size or generic string to ensure uniqueness
+        const sizeStr = data.sizes.length > 0 ? data.sizes[0] : "";
+        const nameWithSize = sizeStr && !data.name.includes(sizeStr) ? `${data.name} ${sizeStr}` : data.name;
+
+        let stockTag = `<stock available="yes" storeId="Dimmiani_pp1" isPP="yes"`;
         if (data.maxPreOrderDays > 0) {
             stockTag += ` preOrder="${data.maxPreOrderDays}"`;
-        } else {
-            stockTag += ` stockLevel="${data.totalQty}"`;
         }
-        stockTag += `/>`;
+        stockTag += ` stockLevel="${data.totalQty}"/>`;
 
         return `    <offer sku="${sku}">
-      <model>${escapeXml(data.name)}</model>
+      <model>${escapeXml(nameWithSize)}</model>
       <brand>Dimmiani</brand>
       <stocks>
         ${stockTag}
       </stocks>
       <price>${data.price}</price>
+      <loanPeriod>12</loanPeriod>
     </offer>`;
     }).join('\n');
 
     return `<?xml version="1.0" encoding="utf-8"?>
-<merchant_offers date="${new Date().toISOString()}" xmlns="halyk_market">
+<merchant_offers xmlns="halyk_market" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" date="${dateStr}">
   <company>Dimmiani</company>
-  <merchantid>Dimmiani</merchantid>
+  <merchantid>${merchantNumericId}</merchantid>
   <offers>
 ${offersXml}
   </offers>

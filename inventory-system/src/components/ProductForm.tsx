@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createProduct } from "@/app/actions";
 import { Upload, X, Loader2 } from "lucide-react";
+import heic2any from "heic2any";
 
 export default function ProductForm() {
     const [isMassAdd, setIsMassAdd] = useState(false);
@@ -57,13 +58,34 @@ export default function ProductForm() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Show local preview immediately
-        const localPreview = URL.createObjectURL(file);
+        // Show local preview immediately if it's already a browser-readable format
+        let localPreview = URL.createObjectURL(file);
         setImagePreview(localPreview);
         setUploadingImage(true);
 
         try {
-            const compressedBlob = await compressImage(file);
+            let processedFile = file;
+
+            // Handle HEIC from iPhones
+            if (file.name.toLowerCase().endsWith(".heic") || file.name.toLowerCase().endsWith(".heif") || file.type === "image/heic") {
+                const convertedBlob = await heic2any({
+                    blob: file,
+                    toType: "image/jpeg",
+                    quality: 0.8
+                });
+                
+                // If the converted result is an array of blobs (burst photo), just take the first one
+                const finalBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+                processedFile = new File([finalBlob], file.name.replace(/\.heic$|\.heif$/i, ".jpg"), {
+                    type: "image/jpeg"
+                });
+
+                // Update preview for the converted JPEG
+                localPreview = URL.createObjectURL(finalBlob);
+                setImagePreview(localPreview);
+            }
+
+            const compressedBlob = await compressImage(processedFile);
             const formData = new FormData();
             formData.append("file", compressedBlob, "product_image.jpg");
 

@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Search, AlertTriangle, CheckCircle, XCircle, ArrowRightLeft, Trash2, Camera } from "lucide-react";
+import { Search, CheckCircle, XCircle, ArrowRightLeft, Trash2, Camera } from "lucide-react";
 import { syncInventory } from "@/app/actions";
 import BarcodeScanner from "./BarcodeScanner";
+
 interface Product {
     id: number;
     name: string;
     sku: string;
     size: string | null;
     quantity: number;
+    quantityShowroom: number;
 }
 
 interface ScannedItem {
@@ -31,18 +33,13 @@ export default function StockCheck({ systemStock }: Props) {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [editingSku, setEditingSku] = useState<string | null>(null);
     const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [location, setLocation] = useState<"WAREHOUSE" | "SHOWROOM">("WAREHOUSE");
 
-    // Map for fast lookups
     const stockMap = useRef(new Map<string, Product>());
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        // Initialize map
         systemStock.forEach(p => {
-            // Key by SKU. If duplicates exist (same SKU diff size?), might be issue. 
-            // Assuming unique SKUs for now or we just take the first.
-            // Actually, products might have same SKU if not unique? 
-            // In our system SKU is unique per product-variant usually.
             stockMap.current.set(p.sku, p);
         });
     }, [systemStock]);
@@ -60,8 +57,8 @@ export default function StockCheck({ systemStock }: Props) {
                     name: product ? product.name : "Неизвестный товар",
                     size: product ? product.size : null,
                     scannedQty: 1,
-                    systemQty: product ? product.quantity : 0
-                }, ...prev]; // Add new items to top
+                    systemQty: product ? (location === "WAREHOUSE" ? product.quantity : product.quantityShowroom) : 0
+                }, ...prev];
             }
         });
     };
@@ -71,9 +68,7 @@ export default function StockCheck({ systemStock }: Props) {
         const input = scanInput.trim();
         if (!input) return;
 
-        // 1. Check for exact SKU match (Scanner behavior)
         const productBySku = stockMap.current.get(input);
-
         if (productBySku) {
             addItem(productBySku.sku, productBySku);
             setScanInput("");
@@ -81,10 +76,8 @@ export default function StockCheck({ systemStock }: Props) {
             return;
         }
 
-        // 2. If valid SKU but not in system (New item?)
-        // Heuristic: If input is numeric and >8 chars, assume it's a barcode
         if (/^\d{8,14}$/.test(input)) {
-            addItem(input); // Add as unknown
+            addItem(input);
             setScanInput("");
             setShowSuggestions(false);
             return;
@@ -98,9 +91,7 @@ export default function StockCheck({ systemStock }: Props) {
         inputRef.current?.focus();
     };
 
-    const handleCompare = () => {
-        setIsCompared(true);
-    };
+    const handleCompare = () => setIsCompared(true);
 
     const handleReset = () => {
         if (confirm("Сбросить текущую проверку?")) {
@@ -109,141 +100,146 @@ export default function StockCheck({ systemStock }: Props) {
         }
     };
 
-
+    const handleLocationToggle = (newLoc: "WAREHOUSE" | "SHOWROOM") => {
+        if (scannedItems.length > 0) {
+            if (!confirm("Внимание: Смена склада сбросит уже отсканированные товары! Продолжить?")) return;
+        }
+        setScannedItems([]);
+        setIsCompared(false);
+        setLocation(newLoc);
+    };
 
     const handleSync = async () => {
-        if (!confirm("ВНИМАНИЕ: Это действие обновит остатки в системе!\n\n- Отсканированные товары будут обновлены.\n- Неотсканированные товары (которые есть в базе) будут обнулены.\n\nПродолжить?")) {
-            return;
-        }
+        if (!confirm("ВНИМАНИЕ: Это действие обновит остатки!\n\n- Отсканированные товары будут обновлены.\n- Неотсканированные будут обнулены.\n\nПродолжить?")) return;
 
         const updates = scannedItems
             .filter(item => item.systemQty >= 0 || stockMap.current.has(item.sku))
-            .map(item => ({
-                sku: item.sku,
-                quantity: item.scannedQty
-            }));
+            .map(item => ({ sku: item.sku, quantity: item.scannedQty }));
 
-        const result = await syncInventory(updates);
+        const result = await syncInventory(updates, location);
 
         if (result.success) {
             alert("Остатки успешно обновлены!");
             setScannedItems([]);
             setIsCompared(false);
             setScanInput("");
-            // Window reload to fetch fresh system stock is simplest, 
-            // or we could depend on Next.js revalidation (which we did in action).
-            // But client component props (systemStock) won't update automatically without a refresh 
-            // unless we convert this to a server component that re-renders or use router.refresh().
             window.location.reload();
         } else {
             alert("Ошибка при обновлении: " + result.error);
         }
     };
 
-    // Prepare comparison data
-    // We need to show:
-    // 1. Items in System but NOT scanned (Missing)
-    // 2. Items Scanned (Matches or Surplus)
-    // 3. Items Scanned but valid (Match)
-
-    // Actually user asked for two lists. 
-    // Left: System (>0). Right: Scanned.
-    // Compare button highlights diffs.
-
     return (
         <div className="space-y-6 h-[calc(100vh-140px)] flex flex-col">
             {/* Top Controls */}
-            <div className="bg-white p-4 rounded shadow flex flex-col md:flex-row gap-4 justify-between items-center shrink-0 z-20 relative">
-                <div className="relative flex-1 w-full md:w-auto">
-                    <form onSubmit={handleScan} className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                        <input
-                            type="text"
-                            placeholder="Сканируйте штрихкод или введите название..."
-                            value={scanInput}
-                            onChange={(e) => {
-                                setScanInput(e.target.value);
-                                setShowSuggestions(true);
-                            }}
-                            ref={inputRef}
-                            autoFocus
-                            className="w-full pl-10 pr-12 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setIsScannerOpen(true)}
-                            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-600 p-1 hover:bg-blue-50 rounded"
-                            title="Сканировать камерой"
-                        >
-                            <Camera className="w-5 h-5" />
-                        </button>
-                    </form>
-
-                    {/* Autocomplete Suggestions */}
-                    {showSuggestions && scanInput.length > 1 && (
-                        <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded shadow-lg mt-1 max-h-60 overflow-y-auto z-50">
-                            {systemStock
-                                .filter(p =>
-                                    p.name.toLowerCase().includes(scanInput.toLowerCase()) ||
-                                    p.sku.includes(scanInput) ||
-                                    (p.size && p.size.toLowerCase().includes(scanInput.toLowerCase()))
-                                )
-                                .slice(0, 10)
-                                .map(product => (
-                                    <button
-                                        key={product.id}
-                                        onClick={() => handleManualSelect(product)}
-                                        className="w-full text-left px-4 py-2 hover:bg-blue-50 border-b last:border-0 flex justify-between items-center"
-                                    >
-                                        <div>
-                                            <div className="font-medium text-sm">{product.name}</div>
-                                            <div className="text-xs text-gray-500">Размер: {product.size || "-"}</div>
-                                        </div>
-                                        <div className="text-xs font-mono text-gray-400">{product.sku}</div>
-                                    </button>
-                                ))
-                            }
-                        </div>
-                    )}
+            <div className="bg-white p-4 rounded shadow flex flex-col gap-4 shrink-0 z-20 relative">
+                {/* Location Switcher */}
+                <div className="flex bg-gray-100 p-1 rounded-lg self-start">
+                    <button
+                        onClick={() => handleLocationToggle("WAREHOUSE")}
+                        className={`px-6 py-2 rounded-md font-bold text-sm transition-colors ${location === "WAREHOUSE" ? "bg-white shadow text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+                    >
+                        Склад
+                    </button>
+                    <button
+                        onClick={() => handleLocationToggle("SHOWROOM")}
+                        className={`px-6 py-2 rounded-md font-bold text-sm transition-colors ${location === "SHOWROOM" ? "bg-white shadow text-purple-600" : "text-gray-500 hover:text-gray-700"}`}
+                    >
+                        Шоурум
+                    </button>
                 </div>
 
-                <div className="flex gap-2">
-                    <button
-                        onClick={handleCompare}
-                        className="flex items-center px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-bold"
-                    >
-                        <ArrowRightLeft className="mr-2 w-5 h-5" />
-                        Сверка
-                    </button>
+                <div className="flex flex-col md:flex-row gap-4 justify-between items-center w-full">
+                    <div className="relative flex-1 w-full md:w-auto">
+                        <form onSubmit={handleScan} className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <input
+                                type="text"
+                                placeholder="Сканируйте штрихкод или введите название..."
+                                value={scanInput}
+                                onChange={(e) => {
+                                    setScanInput(e.target.value);
+                                    setShowSuggestions(true);
+                                }}
+                                ref={inputRef}
+                                autoFocus
+                                className="w-full pl-10 pr-12 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setIsScannerOpen(true)}
+                                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-600 p-1 hover:bg-blue-50 rounded"
+                                title="Сканировать камерой"
+                            >
+                                <Camera className="w-5 h-5" />
+                            </button>
+                        </form>
 
-                    {isCompared && (
+                        {showSuggestions && scanInput.length > 1 && (
+                            <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded shadow-lg mt-1 max-h-60 overflow-y-auto z-50">
+                                {systemStock
+                                    .filter(p =>
+                                        p.name.toLowerCase().includes(scanInput.toLowerCase()) ||
+                                        p.sku.includes(scanInput) ||
+                                        (p.size && p.size.toLowerCase().includes(scanInput.toLowerCase()))
+                                    )
+                                    .slice(0, 10)
+                                    .map(product => (
+                                        <button
+                                            key={product.id}
+                                            onClick={() => handleManualSelect(product)}
+                                            className="w-full text-left px-4 py-2 hover:bg-blue-50 border-b last:border-0 flex justify-between items-center"
+                                        >
+                                            <div>
+                                                <div className="font-medium text-sm">{product.name}</div>
+                                                <div className="text-xs text-gray-500">Размер: {product.size || "-"}</div>
+                                            </div>
+                                            <div className="text-xs font-mono text-gray-400">{product.sku}</div>
+                                        </button>
+                                    ))
+                                }
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex gap-2">
                         <button
-                            onClick={handleSync}
-                            className="flex items-center px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-bold animate-pulse"
-                            title="Применить результаты инвентаризации"
+                            onClick={handleCompare}
+                            className="flex items-center px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-bold"
                         >
-                            <CheckCircle className="mr-2 w-5 h-5" />
-                            Применить
+                            <ArrowRightLeft className="mr-2 w-5 h-5" />
+                            Сверка
                         </button>
-                    )}
 
-                    <button
-                        onClick={handleReset}
-                        className="px-4 py-2 text-red-600 hover:bg-red-50 rounded border border-red-200"
-                    >
-                        Сброс
-                    </button>
+                        {isCompared && (
+                            <button
+                                onClick={handleSync}
+                                className="flex items-center px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-bold animate-pulse"
+                                title="Применить результаты инвентаризации"
+                            >
+                                <CheckCircle className="mr-2 w-5 h-5" />
+                                Применить
+                            </button>
+                        )}
+
+                        <button
+                            onClick={handleReset}
+                            className="px-4 py-2 text-red-600 hover:bg-red-50 rounded border border-red-200"
+                        >
+                            Сброс
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <div className="flex-1 flex gap-6 overflow-hidden min-h-0">
                 {/* Left Column: System Stock */}
                 <div className="flex-1 bg-white rounded shadow flex flex-col overflow-hidden">
-                    <div className="p-3 bg-gray-50 border-b font-bold text-gray-700 flex justify-between">
-                        <span>По системе ({systemStock.reduce((acc, p) => acc + p.quantity, 0)})</span>
-                        <span className="text-xs text-gray-500">Остаток &gt; 0</span>
+                    <div className={`p-3 border-b font-bold flex justify-between ${location === "WAREHOUSE" ? "bg-blue-50 text-blue-900" : "bg-purple-50 text-purple-900"}`}>
+                        <span>По системе: {location === "WAREHOUSE" ? "Склад" : "Шоурум"} ({systemStock.reduce((acc, p) => acc + (location === "WAREHOUSE" ? p.quantity : p.quantityShowroom), 0)})</span>
+                        <span className="text-xs opacity-70">Остаток &gt; 0</span>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-0">
+                    <div className="flex-1 overflow-y-auto">
                         <table className="w-full text-left text-sm">
                             <thead className="bg-gray-50 sticky top-0">
                                 <tr>
@@ -253,28 +249,29 @@ export default function StockCheck({ systemStock }: Props) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {systemStock.map(p => {
-                                    // Logic for checking status if compared
-                                    let statusColor = "";
-                                    if (isCompared) {
-                                        const scanned = scannedItems.find(s => s.sku === p.sku);
-                                        const scannedQty = scanned ? scanned.scannedQty : 0;
-                                        if (scannedQty === p.quantity) statusColor = "bg-green-50";
-                                        else if (scannedQty < p.quantity) statusColor = "bg-red-50"; // Missing
-                                        else statusColor = "bg-yellow-50"; // Surplus (unlikely for system side, but logic holds)
-                                    }
-
-                                    return (
-                                        <tr key={p.id} className={statusColor}>
-                                            <td className="px-4 py-2">
-                                                <div className="font-medium">{p.name}</div>
-                                                <div className="text-xs text-gray-500">{p.size}</div>
-                                            </td>
-                                            <td className="px-4 py-2 font-mono text-xs">{p.sku}</td>
-                                            <td className="px-4 py-2 text-right font-bold">{p.quantity}</td>
-                                        </tr>
-                                    );
-                                })}
+                                {systemStock
+                                    .filter(p => (location === "WAREHOUSE" ? p.quantity : p.quantityShowroom) > 0 || scannedItems.some(s => s.sku === p.sku))
+                                    .map(p => {
+                                        const qty = location === "WAREHOUSE" ? p.quantity : p.quantityShowroom;
+                                        let statusColor = "";
+                                        if (isCompared) {
+                                            const scanned = scannedItems.find(s => s.sku === p.sku);
+                                            const scannedQty = scanned ? scanned.scannedQty : 0;
+                                            if (scannedQty === qty) statusColor = "bg-green-50";
+                                            else if (scannedQty < qty) statusColor = "bg-red-50";
+                                            else statusColor = "bg-yellow-50";
+                                        }
+                                        return (
+                                            <tr key={p.id} className={statusColor}>
+                                                <td className="px-4 py-2">
+                                                    <div className="font-medium">{p.name}</div>
+                                                    <div className="text-xs text-gray-500">{p.size}</div>
+                                                </td>
+                                                <td className="px-4 py-2 font-mono text-xs">{p.sku}</td>
+                                                <td className="px-4 py-2 text-right font-bold">{qty}</td>
+                                            </tr>
+                                        );
+                                    })}
                             </tbody>
                         </table>
                     </div>
@@ -291,7 +288,7 @@ export default function StockCheck({ systemStock }: Props) {
                             </div>
                         )}
                     </div>
-                    <div className="flex-1 overflow-y-auto p-0">
+                    <div className="flex-1 overflow-y-auto">
                         {scannedItems.length === 0 ? (
                             <div className="flex items-center justify-center h-full text-gray-400">
                                 Сканируйте товары...
@@ -309,14 +306,8 @@ export default function StockCheck({ systemStock }: Props) {
                                 </thead>
                                 <tbody className="divide-y">
                                     {scannedItems.map((item, idx) => {
-                                        let statusColor = "";
-                                        let diff = item.scannedQty - item.systemQty;
-
-                                        if (isCompared) {
-                                            if (diff === 0) statusColor = "bg-green-50";
-                                            else statusColor = "bg-red-50";
-                                        }
-
+                                        const diff = item.scannedQty - item.systemQty;
+                                        const statusColor = isCompared ? (diff === 0 ? "bg-green-50" : "bg-red-50") : "";
                                         const isEditing = editingSku === item.sku;
 
                                         return (
@@ -341,9 +332,7 @@ export default function StockCheck({ systemStock }: Props) {
                                                                 ));
                                                             }}
                                                             onBlur={() => setEditingSku(null)}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter') setEditingSku(null);
-                                                            }}
+                                                            onKeyDown={(e) => { if (e.key === "Enter") setEditingSku(null); }}
                                                         />
                                                     ) : (
                                                         <div
@@ -391,7 +380,6 @@ export default function StockCheck({ systemStock }: Props) {
                         if (productBySku) {
                             addItem(productBySku.sku, productBySku);
                         } else {
-                            // If valid SKU logic matches
                             addItem(code);
                         }
                     }}

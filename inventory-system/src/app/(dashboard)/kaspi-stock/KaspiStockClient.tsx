@@ -214,6 +214,13 @@ export default function KaspiStockClient({ localProducts }: { localProducts: Loc
                             <Upload className={`w-4 h-4 ${isPushing ? "animate-bounce" : ""}`} />
                             {isPushing ? "Отправка..." : "Обновить остатки в Kaspi"}
                         </button>
+                        <button
+                            onClick={() => window.location.href = '/api/halyk/export-excel'}
+                            className="flex items-center gap-2 border border-blue-600 text-blue-600 px-4 py-2 rounded hover:bg-blue-50 text-sm transition-colors"
+                        >
+                            <FileSpreadsheet className="w-4 h-4" />
+                            Товары для Халык
+                        </button>
                         <input 
                             type="file" 
                             accept=".xls,.xlsx" 

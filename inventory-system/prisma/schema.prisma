@@ -31,18 +31,39 @@ model Product {
   name          String
   size          String?
   price         Float
+  oldPrice      Float?   // Retains original price when a discount is applied
   sku           String   @unique // Barcode
   kaspiSku      String?  // SKU specific to Kaspi
-  halykUrl      String?  // Direct link or SKU for Halyk Market
+  kaspiUrl      String?  // Direct link to product page on Kaspi
+  halykUrl      String?  // Direct link to product page on Halyk Market
   image         String?  // Base64 or URL
   quantity      Int      @default(0)
+  quantityShowroom Int   @default(0) // Showroom stock
   preOrderDays  Int?     // If set, Kaspi shows this as pre-order with N days lead time
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  storefrontProductId Int?
+  storefrontProduct   StorefrontProduct? @relation(fields: [storefrontProductId], references: [id])
+
   // Relations
   transactions Transaction[]
   orderItems   OrderItem[]
+}
+
+model StorefrontProduct {
+  id            Int       @id @default(autoincrement())
+  name          String
+  description   String?   // Optional description
+  image         String?   // Main image (legacy fallback)
+  images        String[]  @default([]) // Up to 5 images
+  video         String?   // Instagram video link
+  isActive      Boolean   @default(true) // Whether to display on storefront
+  discountPrice Float?    // Promotional exact price. If set, this overrides product variant prices for display
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  products    Product[] // Relations to actual variants/sizes
 }
 
 
@@ -58,6 +79,22 @@ model Transaction {
   
   userId    Int?
   user      User?    @relation(fields: [userId], references: [id])
+}
+
+model SiteContent {
+  id          Int      @id @default(1)
+  text_ru     String?  @db.Text
+  text_kz     String?  @db.Text
+  photo1      String?
+  photo2      String?
+  video_url   String?
+  video2_url  String?
+  video3_url  String?
+  returns_ru  String?  @db.Text
+  returns_kz  String?  @db.Text
+  contacts_ru String?  @db.Text
+  contacts_kz String?  @db.Text
+  updatedAt   DateTime @default(now()) @updatedAt
 }
 
 model Order {
@@ -95,8 +132,17 @@ model Order {
   // Relations
   items          OrderItem[]
   history        OrderHistory[]
-  userId         Int?
+  userId         Int?     // For admin created orders
   user           User?    @relation(fields: [userId], references: [id])
+  
+  customerId     String?  // For storefront users
+  customer       Customer? @relation(fields: [customerId], references: [id])
+  returns        ReturnRequest[]
+
+  // Delivery & Fees
+  deliveryCost   Float?   @default(0)
+  cdekPvzCode    String?  // Code for the pickup point selected by customer
+  paymentStatus  String   @default("PENDING") // PENDING, PAID, FAILED (for kaspi/halyk invoices)
 }
 
 model OrderItem {
@@ -114,6 +160,7 @@ model OrderItem {
   image     String? // Snapshot or custom image
   quantity  Int
   price     Float
+  requiresTransfer Boolean @default(false) // If true, this item was picked from Showroom and needs transfer
 }
 
 model OrderHistory {
@@ -143,18 +190,31 @@ model Credit {
   createdAt      DateTime @default(now())
 }
 
-model SiteContent {
-  id          Int      @id @default(1)
-  text_ru     String?  @db.Text
-  text_kz     String?  @db.Text
-  photo1      String?
-  photo2      String?
-  video_url   String?
-  video2_url  String?
-  video3_url  String?
-  returns_ru  String?  @db.Text
-  returns_kz  String?  @db.Text
-  contacts_ru String?  @db.Text
-  contacts_kz String?  @db.Text
-  updatedAt   DateTime @default(now()) @updatedAt
+model Customer {
+  id              String   @id @default(cuid())
+  phone           String   @unique
+  email           String?  @unique
+  password        String
+  firstName       String?
+  lastName        String?
+  address         String?  // Default saved address
+  discountPercent Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  orders          Order[]
+  returns         ReturnRequest[]
+}
+
+model ReturnRequest {
+  id              String   @id @default(cuid())
+  orderId         Int
+  order           Order    @relation(fields: [orderId], references: [id])
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+  reason          String?
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
+  items           Json     // Which items and quantities are being returned
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

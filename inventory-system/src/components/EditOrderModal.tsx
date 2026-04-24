@@ -40,6 +40,8 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
         deliveryMethod: order.deliveryMethod,
         paymentMethod: order.paymentMethod,
         codAmount: order.codAmount || "",
+        status: order.status,
+        paymentStatus: order.paymentStatus || "PENDING",
     });
 
     const handleSaveDetails = async () => {
@@ -241,8 +243,32 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
                                     </>
                                 )}
 
-                                <label className="block text-sm font-medium">Оплата</label>
+                                <label className="block text-sm font-medium mt-2">Оплата</label>
                                 <input className="w-full border p-2 rounded" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })} />
+
+                                <div className="grid grid-cols-2 gap-2 mt-4">
+                                    <div>
+                                        <label className="block text-sm font-medium">Статус оплаты</label>
+                                        <select className="w-full border p-2 rounded mt-1 bg-white" value={form.paymentStatus} onChange={e => setForm({ ...form, paymentStatus: e.target.value })}>
+                                            <option value="PENDING">Ожидание</option>
+                                            <option value="AWAITING_PAYMENT">Ждет оплаты (Сайт)</option>
+                                            <option value="PAID">Оплачено</option>
+                                            <option value="FAILED">Ошибка / Отказ</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium">Статус заказа</label>
+                                        <select className="w-full border p-2 rounded mt-1 bg-white" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                                            <option value="PENDING">Новый (POS)</option>
+                                            <option value="PENDING_CONFIRMATION">Ждет подтверждения (Сайт)</option>
+                                            <option value="PROCESSING">В сборке</option>
+                                            <option value="SENT">Отправлен</option>
+                                            <option value="DELIVERED">Доставлен</option>
+                                            <option value="COMPLETED">Завершен</option>
+                                            <option value="CANCELLED">Отменен</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* History Log */}

@@ -9,11 +9,10 @@ interface Product {
     name: string;
     sku: string;
     kaspiSku: string | null;
-    halykUrl: string | null;
     size: string | null;
     price: number;
     quantity: number;
-    preOrderDays: number | null;
+    quantityShowroom: number;
     image: string | null;
 }
 
@@ -30,12 +29,10 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
     const [form, setForm] = useState({
         name: product.name,
         sku: product.sku,
-        kaspiSku: product.kaspiSku || "",
-        halykUrl: product.halykUrl || "",
         size: product.size || "",
         price: product.price.toString(),
         quantity: product.quantity.toString(),
-        preOrderDays: product.preOrderDays?.toString() || "0",
+        quantityShowroom: product.quantityShowroom.toString(),
         image: product.image || "",
     });
 
@@ -122,7 +119,7 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
             ...form,
             price: parseFloat(form.price),
             quantity: parseInt(form.quantity),
-            preOrderDays: parseInt(form.preOrderDays) || 0,
+            quantityShowroom: parseInt(form.quantityShowroom),
             applyImageToAll
         });
         setLoading(false);
@@ -208,29 +205,6 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Артикул Kaspi</label>
-                                <input
-                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-mono"
-                                    value={form.kaspiSku}
-                                    onChange={e => setForm({ ...form, kaspiSku: e.target.value })}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="col-span-2">
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Ссылка или Артикул Halyk Market</label>
-                                <input
-                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-mono"
-                                    value={form.halykUrl}
-                                    onChange={e => setForm({ ...form, halykUrl: e.target.value })}
-                                    placeholder="https://halykmarket.kz/..."
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Размер</label>
                                 <input
                                     className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500"
@@ -238,19 +212,9 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                                     onChange={e => setForm({ ...form, size: e.target.value })}
                                 />
                             </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Предзаказ (дней)</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-mono"
-                                    value={form.preOrderDays}
-                                    onChange={e => setForm({ ...form, preOrderDays: e.target.value })}
-                                />
-                            </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-3 gap-3">
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Цена (₸) *</label>
                                 <input
@@ -261,12 +225,21 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Остаток *</label>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Склад *</label>
                                 <input
                                     type="number"
-                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-bold"
+                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-bold text-green-700"
                                     value={form.quantity}
                                     onChange={e => setForm({ ...form, quantity: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Шоурум *</label>
+                                <input
+                                    type="number"
+                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-bold text-purple-700"
+                                    value={form.quantityShowroom}
+                                    onChange={e => setForm({ ...form, quantityShowroom: e.target.value })}
                                 />
                             </div>
                         </div>

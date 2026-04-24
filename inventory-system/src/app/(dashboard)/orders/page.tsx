@@ -24,18 +24,14 @@ export default async function OrdersPage() {
         },
     });
 
-    const products = await prisma.product.findMany({
-        orderBy: { name: "asc" }
-    });
-
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold">Заказы</h1>
-                <CreateOrderClient products={products} />
+                <CreateOrderClient />
             </div>
 
-            <OrdersClient orders={orders} products={products} />
+            <OrdersClient orders={orders} products={[]} />
         </div>
     );
 }

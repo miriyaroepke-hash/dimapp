@@ -2,7 +2,6 @@ import prisma from "@/lib/prisma";
 import ProductTable from "@/components/ProductTable";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import SyncKaspiButton from "@/components/SyncKaspiButton";
 
 export default async function InventoryPage({
     searchParams,
@@ -28,9 +27,19 @@ export default async function InventoryPage({
         where.size = size;
     }
 
-    // Default to positive stock unless "all" is specified
-    if (stock !== "all") {
+    // Handle predefined stock views
+    if (stock === "archived") {
+        where.AND = [
+            { quantity: { lte: 0 } },
+            { quantityShowroom: { lte: 0 } }
+        ];
+    } else if (stock === "showroom") {
+        where.quantityShowroom = { gt: 0 };
+    } else if (stock === "positive" || !stock) {
+        // default: show positive warehouse stock
         where.quantity = { gt: 0 };
+    } else if (stock === "all") {
+        // No filter applied for 'all'
     }
 
     const sortField = sort || "createdAt";
@@ -51,7 +60,6 @@ export default async function InventoryPage({
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                 <h1 className="text-3xl font-bold">Склад</h1>
                 <div className="flex flex-wrap gap-2">
-                    <SyncKaspiButton />
                     <Link
                         href="/inventory/add"
                         className="flex-1 sm:flex-none justify-center items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium flex whitespace-nowrap"

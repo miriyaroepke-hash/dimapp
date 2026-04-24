@@ -28,6 +28,7 @@ interface Order {
     codAmount: number | null;
     totalAmount: number;
     status: string;
+    paymentStatus?: string | null;
     createdAt: Date;
     trackingNumber?: string | null;
     items: any[];
@@ -141,8 +142,15 @@ export default function OrdersClient({ orders, products }: { orders: Order[], pr
                                         )
                                     )}
                                 </td>
-                                <td className="px-6 py-4 font-bold">
-                                    ₸ {order.totalAmount}
+                                <td className="px-6 py-4">
+                                    <div className="font-bold">₸ {order.totalAmount}</div>
+                                    <div className={`mt-1 inline-block px-2 py-0.5 rounded text-[10px] uppercase font-bold 
+                                        ${order.paymentStatus === 'PAID' ? 'bg-green-100 text-green-700' : 
+                                          order.paymentStatus === 'FAILED' ? 'bg-red-100 text-red-700' : 
+                                          'bg-yellow-100 text-yellow-700'}`}
+                                    >
+                                        {order.paymentStatus || "PENDING"}
+                                    </div>
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className={`px-2 py-1 rounded text-xs ${order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-gray-100'}`}>

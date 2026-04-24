@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import * as XLSX from "xlsx";
 import { Download, Check, X } from "lucide-react";
 import { updateOrderStatus, generateCdekPrintUrl } from "@/app/actions";
@@ -189,6 +189,7 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
             "Клиент": o.clientName,
             "Телефон": o.clientPhone,
             "Адрес": `${o.city || ""} ${o.address || ""}`.trim(),
+            "В работе (дней)": differenceInDays(new Date(), new Date(o.createdAt)),
             "Товары": o.items.map(i => `${i.name} (${i.size || "-"}) x${i.quantity}`).join(", "),
             "Оплата": o.paymentMethod,
             "Наложка": o.codAmount || 0,
@@ -290,7 +291,7 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
                                     Курьер {sortConfig?.key === "deliveryMethod" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
                                 </th>
                                 <th scope="col" className="px-6 py-2 cursor-pointer hover:bg-gray-200" onClick={() => handleSort("orderNumber")}>
-                                    Заказ / Время {sortConfig?.key === "orderNumber" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
+                                    Заказ / Дата {sortConfig?.key === "orderNumber" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
                                 </th>
                                 <th scope="col" className="px-6 py-2 cursor-pointer hover:bg-gray-200" onClick={() => handleSort("client")}>
                                     Клиент {sortConfig?.key === "client" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
@@ -374,7 +375,11 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="font-bold">{order.orderNumber}</div>
-                                            <div className="text-xs text-gray-500">{format(new Date(order.createdAt), "HH:mm")}</div>
+                                            <div className="text-xs text-gray-500">{format(new Date(order.createdAt), "dd.MM.yyyy HH:mm")}</div>
+                                            {(() => {
+                                                const days = differenceInDays(new Date(), new Date(order.createdAt));
+                                                return <div className={`text-xs font-semibold mt-1 ${days > 6 ? 'text-red-500' : 'text-gray-500'}`}>{days} дн.</div>;
+                                            })()}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="font-medium">{order.clientName || "-"}</div>

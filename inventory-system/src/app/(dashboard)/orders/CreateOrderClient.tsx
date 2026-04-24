@@ -4,16 +4,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import CreateOrderModal from "@/components/CreateOrderModal";
 
-interface Product {
-    id: number;
-    name: string;
-    sku: string;
-    size: string | null;
-    price: number;
-    quantity: number;
-}
-
-export default function CreateOrderClient({ products }: { products: Product[] }) {
+export default function CreateOrderClient() {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     return (
@@ -28,7 +19,6 @@ export default function CreateOrderClient({ products }: { products: Product[] })
 
             {isModalOpen && (
                 <CreateOrderModal
-                    products={products}
                     onClose={() => setIsModalOpen(false)}
                 />
             )}

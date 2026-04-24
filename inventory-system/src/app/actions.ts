@@ -75,12 +75,10 @@ export async function updateProduct(id: number, data: any) {
             data: {
                 name: data.name,
                 sku: data.sku,
-                kaspiSku: data.kaspiSku || null,
-                halykUrl: data.halykUrl || null,
                 size: data.size || null,
                 price: data.price,
                 quantity: data.quantity,
-                preOrderDays: data.preOrderDays || 0,
+                quantityShowroom: data.quantityShowroom,
                 image: data.image
             }
         });
@@ -132,12 +130,15 @@ export async function createOrder(
     try {
         const totalAmount = cart.reduce((sum, item) => sum + item.price * item.cartQty, 0);
 
+        let orderNumber = `ORD-${Date.now()}`;
+        let telegramItems: string[] = [];
+
         // Transaction to ensure atomic updates
         await prisma.$transaction(async (tx) => {
             // 1. Create Order
             const order = await tx.order.create({
                 data: {
-                    orderNumber: `ORD-${Date.now()}`,
+                    orderNumber,
                     totalAmount,
                     status: "COMPLETED", // Immediate sale
                     source,
@@ -154,10 +155,17 @@ export async function createOrder(
                     items: {
                         create: await Promise.all(cart.map(async (item) => {
                             let product = null;
+                            let requiresTransfer = false;
 
-                            // Only look up product if it has an ID and is NOT custom (though custom items shouldn't have ID usually)
                             if (item.id && !item.isCustom) {
                                 product = await tx.product.findUnique({ where: { id: item.id } });
+                                if (product) {
+                                    // Calculate if we need to deduct from showroom for online/normal orders
+                                    if (source !== "SHOWROOM_POS" && product.quantity < item.cartQty) {
+                                        // We will have to dip into showroom stock
+                                        requiresTransfer = true;
+                                    }
+                                }
                             }
 
                             return {
@@ -167,7 +175,8 @@ export async function createOrder(
                                 size: item.size || product?.size || null,
                                 price: item.price,
                                 quantity: item.cartQty,
-                                image: item.image || product?.image || null
+                                image: item.image || product?.image || null,
+                                requiresTransfer
                             };
                         }))
                     }
@@ -177,31 +186,87 @@ export async function createOrder(
             // 2. Reduce Stock and Create Transactions for REAL products
             for (const item of cart) {
                 if (item.id && !item.isCustom) {
-                    // Re-fetch or check existence to be safe, but we can assume it exists if we found it above
-                    // Simplified: just try update if ID exists
                     try {
-                        await tx.product.update({
-                            where: { id: item.id },
-                            data: { quantity: { decrement: item.cartQty } }
-                        });
+                        const prod = await tx.product.findUnique({ where: { id: item.id } });
+                        if (!prod) continue;
+
+                        if (source === "SHOWROOM_POS") {
+                            // Deduct from Showroom directly
+                            if (prod.quantityShowroom >= item.cartQty) {
+                                telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Продано из Шоурума 🛍️)`);
+                            } else {
+                                telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Увеличен минус в Шоуруме 🪡)`);
+                            }
+                            await tx.product.update({
+                                where: { id: item.id },
+                                data: { quantityShowroom: { decrement: item.cartQty } }
+                            });
+                        } else {
+                            // Normal cascade
+                            if (prod.quantity >= item.cartQty) {
+                                telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Списано со Склада ✅)`);
+                                await tx.product.update({
+                                    where: { id: item.id },
+                                    data: { quantity: { decrement: item.cartQty } }
+                                });
+                            } else if ((Math.max(0, prod.quantity) + prod.quantityShowroom) >= item.cartQty) {
+                                const qtyFromWarehouse = Math.max(0, prod.quantity);
+                                const qtyFromShowroom = item.cartQty - qtyFromWarehouse;
+                                telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Списано из Шоурума 📦, НУЖНА ПЕРЕДАЧА)`);
+                                
+                                await tx.product.update({
+                                    where: { id: item.id },
+                                    data: { 
+                                        ...(qtyFromWarehouse > 0 ? { quantity: { decrement: qtyFromWarehouse } } : {}),
+                                        quantityShowroom: { decrement: qtyFromShowroom }
+                                    }
+                                });
+                            } else {
+                                telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Нет в наличии, ПОД ОТШИВ 🪡)`);
+                                await tx.product.update({
+                                    where: { id: item.id },
+                                    data: { quantity: { decrement: item.cartQty } } // just drive warehouse negative
+                                });
+                            }
+                        }
 
                         await tx.transaction.create({
                             data: {
                                 type: "OUT",
                                 quantity: item.cartQty,
                                 productId: item.id,
-                                // userId: session.user.id
                             }
                         });
                     } catch (err) {
                         console.warn(`Failed to update stock for product ${item.id}:`, err);
-                        // Continue? Or throw? For now continue as it might be a concurrency issue or product deleted
-                        // Throwing would abort the transaction which is safer
                         throw err;
                     }
+                } else {
+                    telegramItems.push(`- ${item.name || "Кастомный товар"} (${item.size || "-"}): ${item.cartQty} шт. (ПОД ОТШИВ 🪡)`);
                 }
             }
         });
+
+        // 3. Send Telegram Notification
+        try {
+            const clientInfo = [customer?.name, customer?.phone].filter(Boolean).join(" ");
+            const fullAddress = [customer?.city, customer?.address].filter(Boolean).join(", ");
+            const msg = `👨‍💻 НОВЫЙ РУЧНОЙ ЗАКАЗ (Админка)
+Заказ: ${orderNumber}
+Клиент: ${clientInfo || "Не указан"}
+Доставка: ${deliveryMethod}${fullAddress ? ` \nКуда: ${fullAddress}` : ""}
+Оплата: ${payment?.method || "CASH"}
+
+Корзина:
+${telegramItems.join("\n")}
+
+Всего: ${totalAmount.toLocaleString("ru-RU")} ₸`;
+
+            const { sendTelegramMessage } = await import("@/lib/telegram");
+            await sendTelegramMessage(msg);
+        } catch (err) {
+            console.error("Telegram notification failed:", err);
+        }
 
         revalidatePath("/inventory");
         revalidatePath("/pos");
@@ -228,37 +293,50 @@ export async function deleteProducts(ids: number[]) {
     }
 }
 
-export async function syncInventory(scannedItems: { sku: string; quantity: number }[]) {
+export async function syncInventory(scannedItems: { sku: string; quantity: number }[], location: "WAREHOUSE" | "SHOWROOM" = "WAREHOUSE") {
     try {
         await prisma.$transaction(async (tx) => {
             // 1. Update scanned items
             for (const item of scannedItems) {
                 await tx.product.update({
                     where: { sku: item.sku },
-                    data: { quantity: item.quantity }
+                    data: location === "WAREHOUSE" 
+                        ? { quantity: item.quantity } 
+                        : { quantityShowroom: item.quantity }
                 });
             }
 
-            // 2. Zero out non-scanned items that are currently positive
-            // Get all SKUs from scanned list
+            // 2. Zero out non-scanned items that are currently positive in the specific location
             const scannedSkus = scannedItems.map(i => i.sku);
 
-            // Find products that are NOT in scannedSkus but have quantity > 0
-            const productsToZero = await tx.product.findMany({
-                where: {
-                    sku: { notIn: scannedSkus },
-                    quantity: { gt: 0 }
-                }
-            });
-
-            // Update them to 0
-            if (productsToZero.length > 0) {
-                await tx.product.updateMany({
+            if (location === "WAREHOUSE") {
+                const productsToZero = await tx.product.findMany({
                     where: {
-                        id: { in: productsToZero.map(p => p.id) }
-                    },
-                    data: { quantity: 0 }
+                        sku: { notIn: scannedSkus },
+                        quantity: { gt: 0 }
+                    }
                 });
+
+                if (productsToZero.length > 0) {
+                    await tx.product.updateMany({
+                        where: { id: { in: productsToZero.map(p => p.id) } },
+                        data: { quantity: 0 }
+                    });
+                }
+            } else {
+                const productsToZero = await tx.product.findMany({
+                    where: {
+                        sku: { notIn: scannedSkus },
+                        quantityShowroom: { gt: 0 }
+                    }
+                });
+
+                if (productsToZero.length > 0) {
+                    await tx.product.updateMany({
+                        where: { id: { in: productsToZero.map(p => p.id) } },
+                        data: { quantityShowroom: 0 }
+                    });
+                }
             }
         });
 
@@ -396,6 +474,8 @@ export async function updateOrder(orderId: number, data: any) {
                     deliveryMethod: data.deliveryMethod,
                     paymentMethod: data.paymentMethod,
                     codAmount: data.codAmount ? parseFloat(data.codAmount) : null,
+                    status: data.status,
+                    paymentStatus: data.paymentStatus,
                 }
             });
 
@@ -405,6 +485,8 @@ export async function updateOrder(orderId: number, data: any) {
             // if (oldOrder.address !== data.address) changes.push(`Адрес: ${oldOrder.address} -> ${data.address}`);
             if (oldOrder.street !== data.street) changes.push(`Улица: ${data.street}`);
             if (oldOrder.deliveryMethod !== data.deliveryMethod) changes.push(`Доставка: ${oldOrder.deliveryMethod} -> ${data.deliveryMethod}`);
+            if (oldOrder.status !== data.status) changes.push(`Статус: ${oldOrder.status} -> ${data.status}`);
+            if (oldOrder.paymentStatus !== data.paymentStatus) changes.push(`Статус оплаты: ${oldOrder.paymentStatus} -> ${data.paymentStatus}`);
 
             if (changes.length > 0) {
                 await tx.orderHistory.create({
@@ -936,5 +1018,269 @@ export async function syncHalykOrders() {
     } catch (e: any) {
         console.error("Halyk Sync Error:", e);
         return { error: e.message || "Ошибка синхронизации" };
+    }
+}
+
+// =========================
+// SITE CONTENT (CMS) ACTIONS
+// =========================
+
+export async function getSiteContent() {
+    try {
+        let content = await prisma.siteContent.findFirst();
+        if (!content) {
+            content = await prisma.siteContent.create({
+                data: {
+                    text_ru: "Curated\nCollection.",
+                    text_kz: "Таңдаулы\nКоллекция.",
+                }
+            });
+        }
+        return content;
+    } catch (error) {
+        console.error("Error getting site content:", error);
+        throw new Error("Failed to get site content");
+    }
+}
+
+export async function updateSiteContent(data: any) {
+    try {
+        const existing = await prisma.siteContent.findFirst();
+        if (existing) {
+            await prisma.siteContent.update({
+                where: { id: existing.id },
+                data: {
+                    text_ru: data.text_ru,
+                    text_kz: data.text_kz,
+                    video_url: data.video_url,
+                    video2_url: data.video2_url,
+                    video3_url: data.video3_url,
+                    returns_ru: data.returns_ru,
+                    returns_kz: data.returns_kz,
+                    contacts_ru: data.contacts_ru,
+                    contacts_kz: data.contacts_kz,
+                }
+            });
+        } else {
+            await prisma.siteContent.create({
+                data: {
+                    text_ru: data.text_ru,
+                    text_kz: data.text_kz,
+                    video_url: data.video_url,
+                    video2_url: data.video2_url,
+                    video3_url: data.video3_url,
+                    returns_ru: data.returns_ru,
+                    returns_kz: data.returns_kz,
+                    contacts_ru: data.contacts_ru,
+                    contacts_kz: data.contacts_kz,
+                }
+            });
+        }
+        revalidatePath('/');
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating site content:", error);
+        throw new Error("Failed to update site content");
+    }
+}
+
+// =========================
+// STOREFRONT PRODUCT GROUPING
+// =========================
+
+export async function createStorefrontProduct(data: { name: string; image: string | undefined; productIds: number[] }) {
+    try {
+        const sfProduct = await prisma.storefrontProduct.create({
+            data: {
+                name: data.name,
+                image: data.image
+            }
+        });
+
+        if (data.productIds && data.productIds.length > 0) {
+            await prisma.product.updateMany({
+                where: { id: { in: data.productIds } },
+                data: { storefrontProductId: sfProduct.id }
+            });
+        }
+        revalidatePath('/inventory');
+        revalidatePath('/storefront');
+        return { success: true };
+    } catch (error) {
+        console.error("Storefront product creation error:", error);
+        throw new Error("Не удалось создать витринную карточку");
+    }
+}
+
+export async function addProductsToStorefront(storefrontId: number, productIds: number[]) {
+    try {
+        if (!productIds || productIds.length === 0) return { success: false, error: "Нет товаров" };
+        
+        await prisma.product.updateMany({
+            where: { id: { in: productIds } },
+            data: { storefrontProductId: storefrontId }
+        });
+        
+        revalidatePath('/inventory');
+        revalidatePath('/storefront');
+        return { success: true };
+    } catch (error) {
+        console.error("Storefront addition error:", error);
+        return { success: false, error: "Не удалось добавить товары в карточку" };
+    }
+}
+
+export async function getStorefrontProducts() {
+    try {
+        return await prisma.storefrontProduct.findMany({
+            include: {
+                products: true
+            },
+            orderBy: {
+                id: 'desc'
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        return [];
+    }
+}
+
+export async function updateStorefrontProduct(id: number, data: { name?: string; image?: string | null; description?: string | null; video?: string | null; images?: string[] }) {
+    try {
+        await prisma.storefrontProduct.update({
+            where: { id },
+            data
+        });
+        revalidatePath('/storefront');
+        revalidatePath('/inventory');
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating storefront product:", error);
+        return { success: false, error: "Не удалось обновить карточку" };
+    }
+}
+
+export async function deleteStorefrontProduct(id: number) {
+    try {
+        await prisma.product.updateMany({
+            where: { storefrontProductId: id },
+            data: { storefrontProductId: null }
+        });
+        await prisma.storefrontProduct.delete({
+            where: { id }
+        });
+        revalidatePath('/storefront');
+        revalidatePath('/inventory');
+        return { success: true };
+    } catch (error) {
+        console.error(error);
+        throw new Error("Не удалось удалить витринную карточку");
+    }
+}
+
+export async function linkProductsToStorefront(storefrontId: number, productIds: number[]) {
+    try {
+        await prisma.product.updateMany({
+            where: { id: { in: productIds } },
+            data: { storefrontProductId: storefrontId }
+        });
+        revalidatePath('/storefront');
+        revalidatePath('/inventory');
+        return { success: true };
+    } catch (error) {
+        throw new Error("Ошибка привязки");
+    }
+}
+
+export async function applyStorefrontDiscounts(ids: number[], discountPrice: number | null) {
+    try {
+        const sfProducts = await prisma.storefrontProduct.findMany({
+            where: { id: { in: ids } },
+            include: { products: true }
+        });
+
+        for (const sf of sfProducts) {
+            await prisma.storefrontProduct.update({ 
+                where: { id: sf.id }, 
+                data: { discountPrice } 
+            });
+            
+            // Sync the prices down to the individual Products for Kaspi, Halyk and Warehouse logic
+            for (const p of sf.products) {
+                if (discountPrice !== null) {
+                    // Applying discount
+                    const newOldPrice = p.oldPrice || p.price; // Retain exactly the original price
+                    await prisma.product.update({
+                        where: { id: p.id },
+                        data: {
+                            oldPrice: newOldPrice,
+                            price: discountPrice
+                        }
+                    });
+                } else {
+                    // Removing discount
+                    if (p.oldPrice !== null) {
+                        await prisma.product.update({
+                            where: { id: p.id },
+                            data: {
+                                price: p.oldPrice,
+                                oldPrice: null
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        revalidatePath('/storefront');
+        revalidatePath('/inventory');
+        return { success: true };
+    } catch (error) {
+        console.error("Discount apply error:", error);
+        return { success: false, error: "Ошибка применения скидки" };
+    }
+}
+
+// =========================
+// WAREHOUSE TRANSFERS
+// =========================
+
+export async function transferProducts(items: { id: number, qty: number }[], direction: "TO_SHOWROOM" | "TO_WAREHOUSE") {
+    try {
+        await prisma.$transaction(async (tx) => {
+            for (const item of items) {
+                if (item.qty <= 0) continue;
+                
+                const p = await tx.product.findUnique({ where: { id: item.id } });
+                if (!p) throw new Error(`Товар ID ${item.id} не найден`);
+
+                if (direction === "TO_SHOWROOM") {
+                    if (p.quantity < item.qty) throw new Error(`Недостаточно на Складе для ${p.name}`);
+                    await tx.product.update({
+                        where: { id: p.id },
+                        data: {
+                            quantity: { decrement: item.qty },
+                            quantityShowroom: { increment: item.qty }
+                        }
+                    });
+                } else if (direction === "TO_WAREHOUSE") {
+                    if (p.quantityShowroom < item.qty) throw new Error(`Недостаточно в Шоуруме для ${p.name}`);
+                    await tx.product.update({
+                        where: { id: p.id },
+                        data: {
+                            quantityShowroom: { decrement: item.qty },
+                            quantity: { increment: item.qty }
+                        }
+                    });
+                }
+            }
+        });
+        revalidatePath('/inventory');
+        revalidatePath('/showroom');
+        return { success: true };
+    } catch (e: any) {
+        console.error("Transfer error:", e);
+        return { success: false, error: e.message || "Ошибка перемещения" };
     }
 }

@@ -1,6 +1,8 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 function escapeXml(unsafe: string) {
   return unsafe.replace(/[<>&'"]/g, (c) => {
     switch (c) {
@@ -41,6 +43,7 @@ export async function GET() {
 
       products.forEach(p => {
         const sku = p.kaspiSku!.trim();
+        if (p.quantity < 0) return;
         if (!groups[sku]) {
           groups[sku] = {
             name: p.name,
@@ -50,9 +53,15 @@ export async function GET() {
           };
         }
         // Суммируем только положительные остатки (или 0)
-        groups[sku].totalQty += Math.max(0, p.quantity);
-        // Берем максимальный срок предзаказа
-        groups[sku].maxPreOrderDays = Math.max(groups[sku].maxPreOrderDays, (p as any).preOrderDays || 0);
+        const qty = Math.max(0, p.quantity);
+        groups[sku].totalQty += qty;
+        
+        // Предзаказ учитываем ТОЛЬКО если количество товара фактически > 0.
+        // Если количество <= 0, предзаказ игнорируется (обнуляется для Каспи).
+        if (qty > 0) {
+            groups[sku].maxPreOrderDays = Math.max(groups[sku].maxPreOrderDays, (p as any).preOrderDays || 0);
+        }
+        
         // Можно также обновлять цену, если она отличается, или имя
         groups[sku].price = p.price; 
       });
@@ -60,7 +69,7 @@ export async function GET() {
       return Object.entries(groups).map(([sku, data]) => {
         const isAvailable = data.totalQty > 0 || data.maxPreOrderDays > 0 ? "yes" : "no";
         
-        let availabilityTag = `<availability available="${isAvailable}" storeId="PP2"`;
+        let availabilityTag = `<availability available="${isAvailable}" storeId="PP3"`;
         if (data.maxPreOrderDays > 0) {
             availabilityTag += ` preOrder="${data.maxPreOrderDays}"`;
         } else {
