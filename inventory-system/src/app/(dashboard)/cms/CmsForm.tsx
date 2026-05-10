@@ -31,18 +31,32 @@ export default function CmsForm({ initialData }: { initialData: any }) {
 
         setUploadingField(fieldName);
         try {
-            const formData = new FormData();
-            formData.append("file", file);
+            // Get signature from backend
+            const signRes = await fetch("/api/cloudinary-sign", { method: "POST" });
+            const signData = await signRes.json();
+            
+            if (!signRes.ok) throw new Error("Failed to get upload signature");
 
-            const res = await fetch("/api/upload-video", {
+            // Upload directly to Cloudinary
+            const isVideo = file.type.startsWith('video/');
+            const uploadFormData = new FormData();
+            uploadFormData.append("file", file);
+            uploadFormData.append("api_key", signData.apiKey);
+            uploadFormData.append("timestamp", signData.timestamp);
+            uploadFormData.append("signature", signData.signature);
+            uploadFormData.append("folder", signData.folder);
+
+            const uploadUrl = `https://api.cloudinary.com/v1_1/${signData.cloudName}/${isVideo ? 'video' : 'image'}/upload`;
+
+            const res = await fetch(uploadUrl, {
                 method: "POST",
-                body: formData,
+                body: uploadFormData,
             });
 
             const data = await res.json();
-            if (!res.ok || data.error) throw new Error(data.error || "Upload failed");
+            if (!res.ok) throw new Error(data.error?.message || "Upload failed");
 
-            setForm(prev => ({ ...prev, [fieldName]: data.url }));
+            setForm(prev => ({ ...prev, [fieldName]: data.secure_url }));
         } catch (err: any) {
             alert("Ошибка при загрузке: " + err.message);
         } finally {
