@@ -29,7 +29,7 @@ export default function Sidebar() {
     return (
         <>
             {/* Mobile Header */}
-            <div className="md:hidden flex items-center justify-between p-4 bg-[#967BB6] text-black border-b border-gray-400">
+            <div className="md:hidden flex items-center justify-between p-4 bg-[#E6D5B8] text-black border-b border-gray-400">
                 <span className="font-bold text-lg uppercase">Dimmiani</span>
                 <button onClick={() => setIsOpen(!isOpen)}>
                     {isOpen ? <X /> : <Menu />}
@@ -38,7 +38,7 @@ export default function Sidebar() {
 
             {/* Sidebar Container */}
             <div className={clsx(
-                "fixed inset-y-0 left-0 z-50 w-64 bg-[#967BB6] text-black transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:inset-auto border-r border-gray-400",
+                "fixed inset-y-0 left-0 z-50 w-64 bg-[#E6D5B8] text-black transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:inset-auto border-r border-gray-400",
                 isOpen ? "translate-x-0" : "-translate-x-full"
             )}>
                 <div className="flex flex-col h-full">
@@ -57,7 +57,7 @@ export default function Sidebar() {
                                     onClick={() => setIsOpen(false)}
                                     className={clsx(
                                         "flex items-center px-4 py-3 rounded-lg transition-colors font-medium",
-                                        isActive ? "bg-black text-white" : "text-gray-900 hover:bg-[#B57EDC] hover:text-black"
+                                        isActive ? "bg-black text-white" : "text-gray-900 hover:bg-[#D5C4A1] hover:text-black"
                                     )}
                                 >
                                     <Icon className="w-5 h-5 mr-3" />
@@ -70,7 +70,7 @@ export default function Sidebar() {
                     <div className="p-4 border-t border-gray-400">
                         <button
                             onClick={() => signOut()}
-                            className="flex items-center w-full px-4 py-3 text-gray-900 rounded-lg hover:bg-[#B57EDC] hover:text-black transition-colors font-medium"
+                            className="flex items-center w-full px-4 py-3 text-gray-900 rounded-lg hover:bg-[#D5C4A1] hover:text-black transition-colors font-medium"
                         >
                             <LogOut className="w-5 h-5 mr-3" />
                             Выйти
