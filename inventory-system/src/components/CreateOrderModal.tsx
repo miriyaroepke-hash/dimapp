@@ -12,6 +12,7 @@ interface Product {
     size: string | null;
     price: number;
     quantity: number;
+    quantityShowroom?: number;
     image?: string | null;
 }
 
@@ -92,7 +93,8 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
         setCart(prev => {
             const existing = prev.find(item => item.product.id === product.id);
             if (existing) {
-                if (existing.cartQty >= product.quantity) return prev; // Max stock reached
+                const maxQty = (product.quantity || 0) + (product.quantityShowroom || 0);
+                if (existing.cartQty >= maxQty) return prev; // Max stock reached
                 return prev.map(item =>
                     item.product.id === product.id
                         ? { ...item, cartQty: item.cartQty + 1 }
@@ -120,6 +122,7 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
             price: parseFloat(customPrice),
             sku: "CUSTOM-" + Date.now(),
             quantity: 999, // Infinite for custom
+            quantityShowroom: 0,
             image: customImage,
             isCustom: true
         };
@@ -155,7 +158,8 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
     const updateQty = (sku: string, qty: number) => {
         setCart(prev => prev.map(item => {
             if ((item.product.sku || "CUSTOM") === sku) {
-                const max = (item.product as any).isCustom ? 999 : (item.product as Product).quantity;
+                const prod = item.product as Product;
+                const max = (prod as any).isCustom ? 999 : (prod.quantity || 0) + (prod.quantityShowroom || 0);
                 return { ...item, cartQty: Math.min(Math.max(1, qty), max || 999) };
             }
             return item;
@@ -364,7 +368,7 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
                                             </div>
                                             <div className="text-right">
                                                 <div className="font-bold">₸ {product.price}</div>
-                                                <div className="text-xs text-gray-500">Ост: {product.quantity}</div>
+                                                <div className="text-xs text-gray-500">Ост: {(product.quantity || 0) + (product.quantityShowroom || 0)}</div>
                                             </div>
                                         </button>
                                     ))}

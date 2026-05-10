@@ -133,119 +133,120 @@ export async function createOrder(
         let orderNumber = `ORD-${Date.now()}`;
         let telegramItems: string[] = [];
 
-        // Transaction to ensure atomic updates
-        await prisma.$transaction(async (tx) => {
-            // 1. Create Order
-            const order = await tx.order.create({
-                data: {
-                    orderNumber,
-                    totalAmount,
-                    status: "COMPLETED", // Immediate sale
-                    source,
-                    deliveryMethod,
-                    clientName: customer?.name,
-                    clientPhone: customer?.phone,
-                    city: customer?.city,
-                    address: customer?.address,
-                    postalCode: customer?.postalCode,
+        // 1. Fetch all products up front to avoid interactive transaction queries
+        const productIds = cart.filter(i => i.id && !i.isCustom).map(i => i.id as number);
+        let products: any[] = [];
+        if (productIds.length > 0) {
+            products = await prisma.product.findMany({ where: { id: { in: productIds } } });
+        }
+        const prodMap = new Map(products.map(p => [p.id, p]));
 
-                    paymentMethod: payment?.method || "CASH",
-                    codAmount: payment?.codAmount,
+        const queries: any[] = [];
 
-                    items: {
-                        create: await Promise.all(cart.map(async (item) => {
-                            let product = null;
-                            let requiresTransfer = false;
+        // 2. Prepare Order Payload
+        const orderItemsCreatePayload = cart.map(item => {
+            let product = null;
+            let requiresTransfer = false;
 
-                            if (item.id && !item.isCustom) {
-                                product = await tx.product.findUnique({ where: { id: item.id } });
-                                if (product) {
-                                    // Calculate if we need to deduct from showroom for online/normal orders
-                                    if (source !== "SHOWROOM_POS" && product.quantity < item.cartQty) {
-                                        // We will have to dip into showroom stock
-                                        requiresTransfer = true;
-                                    }
-                                }
-                            }
-
-                            return {
-                                productId: product ? product.id : null,
-                                name: item.name || product?.name || "Unknown",
-                                sku: item.sku || product?.sku || "CUSTOM",
-                                size: item.size || product?.size || null,
-                                price: item.price,
-                                quantity: item.cartQty,
-                                image: item.image || product?.image || null,
-                                requiresTransfer
-                            };
-                        }))
+            if (item.id && !item.isCustom) {
+                product = prodMap.get(item.id);
+                if (product) {
+                    if (source !== "SHOWROOM_POS" && product.quantity < item.cartQty) {
+                        requiresTransfer = true;
                     }
-                }
-            });
-
-            // 2. Reduce Stock and Create Transactions for REAL products
-            for (const item of cart) {
-                if (item.id && !item.isCustom) {
-                    try {
-                        const prod = await tx.product.findUnique({ where: { id: item.id } });
-                        if (!prod) continue;
-
-                        if (source === "SHOWROOM_POS") {
-                            // Deduct from Showroom directly
-                            if (prod.quantityShowroom >= item.cartQty) {
-                                telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Продано из Шоурума 🛍️)`);
-                            } else {
-                                telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Увеличен минус в Шоуруме 🪡)`);
-                            }
-                            await tx.product.update({
-                                where: { id: item.id },
-                                data: { quantityShowroom: { decrement: item.cartQty } }
-                            });
-                        } else {
-                            // Normal cascade
-                            if (prod.quantity >= item.cartQty) {
-                                telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Списано со Склада ✅)`);
-                                await tx.product.update({
-                                    where: { id: item.id },
-                                    data: { quantity: { decrement: item.cartQty } }
-                                });
-                            } else if ((Math.max(0, prod.quantity) + prod.quantityShowroom) >= item.cartQty) {
-                                const qtyFromWarehouse = Math.max(0, prod.quantity);
-                                const qtyFromShowroom = item.cartQty - qtyFromWarehouse;
-                                telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Списано из Шоурума 📦, НУЖНА ПЕРЕДАЧА)`);
-                                
-                                await tx.product.update({
-                                    where: { id: item.id },
-                                    data: { 
-                                        ...(qtyFromWarehouse > 0 ? { quantity: { decrement: qtyFromWarehouse } } : {}),
-                                        quantityShowroom: { decrement: qtyFromShowroom }
-                                    }
-                                });
-                            } else {
-                                telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Нет в наличии, ПОД ОТШИВ 🪡)`);
-                                await tx.product.update({
-                                    where: { id: item.id },
-                                    data: { quantity: { decrement: item.cartQty } } // just drive warehouse negative
-                                });
-                            }
-                        }
-
-                        await tx.transaction.create({
-                            data: {
-                                type: "OUT",
-                                quantity: item.cartQty,
-                                productId: item.id,
-                            }
-                        });
-                    } catch (err) {
-                        console.warn(`Failed to update stock for product ${item.id}:`, err);
-                        throw err;
-                    }
-                } else {
-                    telegramItems.push(`- ${item.name || "Кастомный товар"} (${item.size || "-"}): ${item.cartQty} шт. (ПОД ОТШИВ 🪡)`);
                 }
             }
+
+            return {
+                productId: product ? product.id : null,
+                name: item.name || product?.name || "Unknown",
+                sku: item.sku || product?.sku || "CUSTOM",
+                size: item.size || product?.size || null,
+                price: item.price,
+                quantity: item.cartQty,
+                image: item.image || product?.image || null,
+                requiresTransfer
+            };
         });
+
+        queries.push(prisma.order.create({
+            data: {
+                orderNumber,
+                totalAmount,
+                status: "COMPLETED",
+                source,
+                deliveryMethod,
+                clientName: customer?.name,
+                clientPhone: customer?.phone,
+                city: customer?.city,
+                address: customer?.address,
+                postalCode: customer?.postalCode,
+                paymentMethod: payment?.method || "CASH",
+                codAmount: payment?.codAmount,
+                items: {
+                    create: orderItemsCreatePayload
+                }
+            }
+        }));
+
+        // 3. Stock Reduction Queries
+        for (const item of cart) {
+            if (item.id && !item.isCustom) {
+                const prod = prodMap.get(item.id);
+                if (!prod) continue;
+
+                if (source === "SHOWROOM_POS") {
+                    if (prod.quantityShowroom >= item.cartQty) {
+                        telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Продано из Шоурума 🛍️)`);
+                    } else {
+                        telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Увеличен минус в Шоуруме 🪡)`);
+                    }
+                    queries.push(prisma.product.update({
+                        where: { id: item.id },
+                        data: { quantityShowroom: { decrement: item.cartQty } }
+                    }));
+                } else {
+                    if (prod.quantity >= item.cartQty) {
+                        telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Списано со Склада ✅)`);
+                        queries.push(prisma.product.update({
+                            where: { id: item.id },
+                            data: { quantity: { decrement: item.cartQty } }
+                        }));
+                    } else if ((Math.max(0, prod.quantity) + prod.quantityShowroom) >= item.cartQty) {
+                        const qtyFromWarehouse = Math.max(0, prod.quantity);
+                        const qtyFromShowroom = item.cartQty - qtyFromWarehouse;
+                        telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Списано из Шоурума 📦, НУЖНА ПЕРЕДАЧА)`);
+                        
+                        queries.push(prisma.product.update({
+                            where: { id: item.id },
+                            data: { 
+                                ...(qtyFromWarehouse > 0 ? { quantity: { decrement: qtyFromWarehouse } } : {}),
+                                quantityShowroom: { decrement: qtyFromShowroom }
+                            }
+                        }));
+                    } else {
+                        telegramItems.push(`- ${item.name || prod.name} (${item.size || prod.size || "-"}): ${item.cartQty} шт. (Нет в наличии, ПОД ОТШИВ 🪡)`);
+                        queries.push(prisma.product.update({
+                            where: { id: item.id },
+                            data: { quantity: { decrement: item.cartQty } }
+                        }));
+                    }
+                }
+
+                queries.push(prisma.transaction.create({
+                    data: {
+                        type: "OUT",
+                        quantity: item.cartQty,
+                        productId: item.id,
+                    }
+                }));
+            } else {
+                telegramItems.push(`- ${item.name || "Кастомный товар"} (${item.size || "-"}): ${item.cartQty} шт. (ПОД ОТШИВ 🪡)`);
+            }
+        }
+
+        // 4. Execute all queries in a single atomic network payload!
+        await prisma.$transaction(queries);
 
         // 3. Send Telegram Notification
         try {
@@ -338,7 +339,7 @@ export async function syncInventory(scannedItems: { sku: string; quantity: numbe
                     });
                 }
             }
-        });
+        }, { maxWait: 15000, timeout: 30000 });
 
         revalidatePath("/inventory");
         revalidatePath("/stock-check");
@@ -497,7 +498,7 @@ export async function updateOrder(orderId: number, data: any) {
                     }
                 });
             }
-        });
+        }, { maxWait: 15000, timeout: 30000 });
 
         revalidatePath("/orders");
         return { success: true };
@@ -566,7 +567,7 @@ export async function addItemToOrder(orderId: number, productDetails: any) {
                     details: `Добавлен: ${productDetails.name} (${productDetails.quantity} шт.)`
                 }
             });
-        });
+        }, { maxWait: 15000, timeout: 30000 });
 
         revalidatePath("/orders");
         return { success: true };
@@ -617,7 +618,7 @@ export async function removeItemFromOrder(orderId: number, itemId: number) {
                     details: `Удален: ${item.name} (${item.quantity} шт.)`
                 }
             });
-        });
+        }, { maxWait: 15000, timeout: 30000 });
 
         revalidatePath("/orders");
         return { success: true };
@@ -722,7 +723,7 @@ export async function syncKaspiOrders() {
                                 }
                             });
                         }
-                    });
+                    }, { maxWait: 15000, timeout: 30000 });
                 }
                 continue;
             }
@@ -841,7 +842,7 @@ export async function syncKaspiOrders() {
                         });
                     }
                 }
-            });
+            }, { maxWait: 15000, timeout: 30000 });
             addedCount++;
         }
 
@@ -916,7 +917,7 @@ export async function syncHalykOrders() {
                                 }
                             });
                         }
-                    });
+                    }, { maxWait: 15000, timeout: 30000 });
                 }
                 continue;
             }
@@ -1007,7 +1008,7 @@ export async function syncHalykOrders() {
                         });
                     }
                 }
-            });
+            }, { maxWait: 15000, timeout: 30000 });
             addedCount++;
         }
 
@@ -1275,7 +1276,7 @@ export async function transferProducts(items: { id: number, qty: number }[], dir
                     });
                 }
             }
-        });
+        }, { maxWait: 15000, timeout: 30000 });
         revalidatePath('/inventory');
         revalidatePath('/showroom');
         return { success: true };

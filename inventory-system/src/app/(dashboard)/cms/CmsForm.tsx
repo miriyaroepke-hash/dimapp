@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { updateSiteContent } from "@/app/actions";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, ExternalLink, Image } from "lucide-react";
+
+// Secret token to activate admin mode on storefront (stored in localStorage on vitrina)
+const ADMIN_TOKEN = "dimmiani_admin_2024";
 
 export default function CmsForm({ initialData }: { initialData: any }) {
     const [isLoading, setIsLoading] = useState(false);
@@ -10,6 +13,8 @@ export default function CmsForm({ initialData }: { initialData: any }) {
     const [form, setForm] = useState({
         text_ru: initialData?.text_ru || "",
         text_kz: initialData?.text_kz || "",
+        photo1: initialData?.photo1 || "",
+        photo2: initialData?.photo2 || "",
         video_url: initialData?.video_url || "",
         video2_url: initialData?.video2_url || "",
         video3_url: initialData?.video3_url || "",
@@ -20,26 +25,26 @@ export default function CmsForm({ initialData }: { initialData: any }) {
     });
     const [uploadingField, setUploadingField] = useState<string | null>(null);
 
-    const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
+    const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        
+
         setUploadingField(fieldName);
         try {
             const formData = new FormData();
             formData.append("file", file);
-            
+
             const res = await fetch("/api/upload-video", {
                 method: "POST",
                 body: formData,
             });
-            
+
             const data = await res.json();
             if (!res.ok || data.error) throw new Error(data.error || "Upload failed");
-            
+
             setForm(prev => ({ ...prev, [fieldName]: data.url }));
         } catch (err: any) {
-            alert("Ошибка при загрузке видео: " + err.message);
+            alert("Ошибка при загрузке: " + err.message);
         } finally {
             setUploadingField(null);
             e.target.value = '';
@@ -62,163 +67,175 @@ export default function CmsForm({ initialData }: { initialData: any }) {
         }
     };
 
+    const vitrinaAdminUrl = `https://dimmiani.kz/?adminToken=${ADMIN_TOKEN}`;
+
+    // Helper: upload button
+    const UploadBtn = ({ field, accept, label }: { field: string; accept: string; label: string }) => (
+        <label className="relative flex items-center justify-center px-4 py-2 bg-blue-50 text-blue-600 font-medium rounded hover:bg-blue-100 transition cursor-pointer overflow-hidden border border-blue-200 whitespace-nowrap">
+            {uploadingField === field ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Загрузка...</>
+            ) : label}
+            <input
+                type="file"
+                accept={accept}
+                className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                onChange={(e) => handleMediaUpload(e, field)}
+                disabled={uploadingField !== null}
+            />
+        </label>
+    );
+
     return (
-        <form onSubmit={handleSubmit} className="max-w-4xl space-y-8 bg-white p-6 rounded-lg shadow-sm border">
+        <form onSubmit={handleSubmit} className="max-w-4xl space-y-8">
+
+            {/* КНОПКА ОТКРЫТЬ ВИТРИНУ */}
+            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 flex items-center justify-between">
+                <div>
+                    <p className="font-semibold text-indigo-800">Предпросмотр витрины (режим администратора)</p>
+                    <p className="text-sm text-indigo-600 mt-0.5">Открывает витрину с доступом к корзине и функциям заказа</p>
+                </div>
+                <a
+                    href={vitrinaAdminUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white font-semibold rounded hover:bg-indigo-700 transition"
+                >
+                    Открыть витрину <ExternalLink className="w-4 h-4" />
+                </a>
+            </div>
+
             {/* ТЕКСТЫ ГЛАВНОГО ЭКРАНА */}
-            <div className="space-y-4">
+            <div className="space-y-4 bg-white p-6 rounded-lg shadow-sm border">
                 <h2 className="text-xl font-semibold border-b pb-2">Главный экран (Тексты)</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Текст (Русский)</label>
-                        <textarea 
+                        <textarea
                             rows={3}
                             className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
                             value={form.text_ru}
-                            onChange={(e) => setForm({...form, text_ru: e.target.value})}
+                            onChange={(e) => setForm({ ...form, text_ru: e.target.value })}
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Текст (Қазақша)</label>
-                        <textarea 
+                        <textarea
                             rows={3}
                             className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
                             value={form.text_kz}
-                            onChange={(e) => setForm({...form, text_kz: e.target.value})}
+                            onChange={(e) => setForm({ ...form, text_kz: e.target.value })}
                         />
                     </div>
+                </div>
+            </div>
+
+            {/* ФОТОГРАФИИ */}
+            <div className="space-y-4 bg-white p-6 rounded-lg shadow-sm border">
+                <h2 className="text-xl font-semibold border-b pb-2">Фотографии на главной</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {([
+                        { field: 'photo1', label: 'Фото 1' },
+                        { field: 'photo2', label: 'Фото 2' },
+                    ] as const).map(({ field, label }) => (
+                        <div key={field}>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+                            {form[field] && (
+                                <img src={form[field]} alt="" className="w-full h-48 object-cover rounded mb-2" />
+                            )}
+                            {!form[field] && (
+                                <div className="w-full h-32 bg-gray-100 rounded flex items-center justify-center text-gray-400 mb-2">
+                                    <Image className="w-8 h-8" />
+                                </div>
+                            )}
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="или вставьте URL..."
+                                    className="flex-1 border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                                    value={form[field]}
+                                    onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+                                />
+                                <UploadBtn field={field} accept="image/*" label="Загрузить" />
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
 
             {/* ВИДЕО */}
-            <div className="space-y-6">
+            <div className="space-y-6 bg-white p-6 rounded-lg shadow-sm border">
                 <h2 className="text-xl font-semibold border-b pb-2">Медиа (Видео на главной)</h2>
                 <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Видео 1 (Большое верхнее)</label>
-                        <div className="flex gap-2">
-                            <input 
-                                type="text"
-                                placeholder="https://.../video.mp4"
-                                className="flex-1 border p-2 rounded focus:ring-2 focus:ring-blue-500"
-                                value={form.video_url}
-                                onChange={(e) => setForm({...form, video_url: e.target.value})}
-                            />
-                            <label className="relative flex items-center justify-center px-4 py-2 bg-blue-50 text-blue-600 font-medium rounded hover:bg-blue-100 transition cursor-pointer overflow-hidden border border-blue-200">
-                                {uploadingField === 'video_url' ? (
-                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Загрузка...</>
-                                ) : (
-                                    <>Загрузить файл</>
-                                )}
-                                <input 
-                                    type="file" 
-                                    accept="video/*" 
-                                    className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                                    onChange={(e) => handleVideoUpload(e, 'video_url')}
-                                    disabled={uploadingField !== null}
+                    {([
+                        { field: 'video_url', label: 'Видео 1 (Большое верхнее)' },
+                        { field: 'video2_url', label: 'Видео 2 (Левое нижнее)' },
+                        { field: 'video3_url', label: 'Видео 3 (Правое нижнее)' },
+                    ] as const).map(({ field, label }) => (
+                        <div key={field}>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="https://.../video.mp4"
+                                    className="flex-1 border p-2 rounded focus:ring-2 focus:ring-blue-500"
+                                    value={form[field]}
+                                    onChange={(e) => setForm({ ...form, [field]: e.target.value })}
                                 />
-                            </label>
+                                <UploadBtn field={field} accept="video/*" label="Загрузить видео" />
+                            </div>
+                            {form[field] && (
+                                <video src={form[field]} className="mt-2 h-28 rounded object-cover" muted />
+                            )}
                         </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Видео 2 (Левое нижнее)</label>
-                        <div className="flex gap-2">
-                            <input 
-                                type="text"
-                                placeholder="https://.../video2.mp4"
-                                className="flex-1 border p-2 rounded focus:ring-2 focus:ring-blue-500"
-                                value={form.video2_url}
-                                onChange={(e) => setForm({...form, video2_url: e.target.value})}
-                            />
-                            <label className="relative flex items-center justify-center px-4 py-2 bg-blue-50 text-blue-600 font-medium rounded hover:bg-blue-100 transition cursor-pointer overflow-hidden border border-blue-200">
-                                {uploadingField === 'video2_url' ? (
-                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Загрузка...</>
-                                ) : (
-                                    <>Загрузить файл</>
-                                )}
-                                <input 
-                                    type="file" 
-                                    accept="video/*" 
-                                    className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                                    onChange={(e) => handleVideoUpload(e, 'video2_url')}
-                                    disabled={uploadingField !== null}
-                                />
-                            </label>
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Видео 3 (Правое нижнее)</label>
-                        <div className="flex gap-2">
-                            <input 
-                                type="text"
-                                placeholder="https://.../video3.mp4"
-                                className="flex-1 border p-2 rounded focus:ring-2 focus:ring-blue-500"
-                                value={form.video3_url}
-                                onChange={(e) => setForm({...form, video3_url: e.target.value})}
-                            />
-                            <label className="relative flex items-center justify-center px-4 py-2 bg-blue-50 text-blue-600 font-medium rounded hover:bg-blue-100 transition cursor-pointer overflow-hidden border border-blue-200">
-                                {uploadingField === 'video3_url' ? (
-                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Загрузка...</>
-                                ) : (
-                                    <>Загрузить файл</>
-                                )}
-                                <input 
-                                    type="file" 
-                                    accept="video/*" 
-                                    className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                                    onChange={(e) => handleVideoUpload(e, 'video3_url')}
-                                    disabled={uploadingField !== null}
-                                />
-                            </label>
-                        </div>
-                    </div>
+                    ))}
                 </div>
             </div>
 
             {/* ВОЗВРАТЫ */}
-            <div className="space-y-4">
+            <div className="space-y-4 bg-white p-6 rounded-lg shadow-sm border">
                 <h2 className="text-xl font-semibold border-b pb-2">Политика возврата</h2>
                 <div className="grid grid-cols-1 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Возвраты (Русский)</label>
-                        <textarea 
+                        <textarea
                             rows={4}
                             className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
                             value={form.returns_ru}
-                            onChange={(e) => setForm({...form, returns_ru: e.target.value})}
+                            onChange={(e) => setForm({ ...form, returns_ru: e.target.value })}
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Возвраты (Қазақша)</label>
-                        <textarea 
+                        <textarea
                             rows={4}
                             className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
                             value={form.returns_kz}
-                            onChange={(e) => setForm({...form, returns_kz: e.target.value})}
+                            onChange={(e) => setForm({ ...form, returns_kz: e.target.value })}
                         />
                     </div>
                 </div>
             </div>
 
             {/* КОНТАКТЫ */}
-            <div className="space-y-4">
+            <div className="space-y-4 bg-white p-6 rounded-lg shadow-sm border">
                 <h2 className="text-xl font-semibold border-b pb-2">Контакты</h2>
                 <div className="grid grid-cols-1 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Адреса и контакты (Русский)</label>
-                        <textarea 
+                        <textarea
                             rows={4}
                             className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
                             value={form.contacts_ru}
-                            onChange={(e) => setForm({...form, contacts_ru: e.target.value})}
+                            onChange={(e) => setForm({ ...form, contacts_ru: e.target.value })}
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Адреса и контакты (Қазақша)</label>
-                        <textarea 
+                        <textarea
                             rows={4}
                             className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
                             value={form.contacts_kz}
-                            onChange={(e) => setForm({...form, contacts_kz: e.target.value})}
+                            onChange={(e) => setForm({ ...form, contacts_kz: e.target.value })}
                         />
                     </div>
                 </div>

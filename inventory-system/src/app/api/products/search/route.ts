@@ -10,10 +10,19 @@ export async function GET(req: NextRequest) {
 
     const products = await prisma.product.findMany({
         where: {
-            quantity: { gt: 0 },
-            OR: [
-                { name: { contains: q, mode: "insensitive" } },
-                { sku: { contains: q } }
+            AND: [
+                {
+                    OR: [
+                        { quantity: { gt: 0 } },
+                        { quantityShowroom: { gt: 0 } }
+                    ]
+                },
+                {
+                    OR: [
+                        { name: { contains: q, mode: "insensitive" } },
+                        { sku: { contains: q } }
+                    ]
+                }
             ]
         },
         select: {
@@ -23,6 +32,7 @@ export async function GET(req: NextRequest) {
             size: true,
             price: true,
             quantity: true,
+            quantityShowroom: true,
             image: true,
         },
         take: 20,

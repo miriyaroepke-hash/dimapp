@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 
+// Allow large video/image uploads
+export const maxDuration = 120;
+
 function uploadToCloudinary(buffer: Buffer, options: object): Promise<any> {
     return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
@@ -30,11 +33,12 @@ export async function POST(req: NextRequest) {
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
+        const isVideo = file.type.startsWith('video/');
+
         const result = await uploadToCloudinary(buffer, {
             folder: 'inventory_showcase_content',
-            resource_type: 'video', // Important for video!
-            quality: 'auto',
-            fetch_format: 'mp4',
+            resource_type: isVideo ? 'video' : 'image',
+            ...(isVideo ? { quality: 'auto', fetch_format: 'mp4' } : {}),
         });
 
         return NextResponse.json({ url: result.secure_url });

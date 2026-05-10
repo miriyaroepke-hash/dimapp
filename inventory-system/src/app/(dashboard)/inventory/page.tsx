@@ -14,33 +14,41 @@ export default async function InventoryPage({
     const limit = perPage === "all" ? undefined : Number(perPage) || 10;
     const skip = limit ? (page - 1) * limit : 0;
 
-    const where: any = {};
+    const conditions: any[] = [];
 
     if (query) {
-        where.OR = [
-            { name: { contains: query, mode: "insensitive" } },
-            { sku: { contains: query, mode: "insensitive" } },
-        ];
+        conditions.push({
+            OR: [
+                { name: { contains: query, mode: "insensitive" } },
+                { sku: { contains: query, mode: "insensitive" } },
+            ]
+        });
     }
 
     if (size) {
-        where.size = size;
+        conditions.push({ size });
     }
 
     // Handle predefined stock views
     if (stock === "archived") {
-        where.AND = [
-            { quantity: { lte: 0 } },
-            { quantityShowroom: { lte: 0 } }
-        ];
+        conditions.push({ quantity: { lte: 0 }, quantityShowroom: { lte: 0 } });
+    } else if (stock === "warehouse") {
+        conditions.push({ quantity: { gt: 0 } });
     } else if (stock === "showroom") {
-        where.quantityShowroom = { gt: 0 };
+        conditions.push({ quantityShowroom: { gt: 0 } });
     } else if (stock === "positive" || !stock) {
-        // default: show positive warehouse stock
-        where.quantity = { gt: 0 };
+        // default: show positive stock in ANY location
+        conditions.push({
+            OR: [
+                { quantity: { gt: 0 } },
+                { quantityShowroom: { gt: 0 } }
+            ]
+        });
     } else if (stock === "all") {
         // No filter applied for 'all'
     }
+
+    const where = conditions.length > 0 ? { AND: conditions } : {};
 
     const sortField = sort || "createdAt";
     const sortOrder = order || "desc";

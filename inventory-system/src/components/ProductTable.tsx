@@ -149,9 +149,10 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                         onChange={(e) => updateParams({ stock: e.target.value, page: "1" })}
                         className="border rounded px-3 py-2 bg-white"
                     >
-                        <option value="positive">В наличии (Склад &gt; 0)</option>
+                        <option value="positive">В наличии (Везде &gt; 0)</option>
+                        <option value="warehouse">В наличии (Склад &gt; 0)</option>
                         <option value="showroom">В наличии (Шоурум &gt; 0)</option>
-                        <option value="archived">Архив (Везде 0 и ниже)</option>
+                        <option value="archived">Архив (Везде 0)</option>
                         <option value="all">Все (вкл. 0)</option>
                     </select>
 
