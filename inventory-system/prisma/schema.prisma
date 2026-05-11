@@ -92,6 +92,10 @@ model SiteContent {
   video3_url  String?
   returns_ru  String?  @db.Text
   returns_kz  String?  @db.Text
+  terms_ru    String?  @db.Text
+  terms_kz    String?  @db.Text
+  blog_ru     String?  @db.Text
+  blog_kz     String?  @db.Text
   contacts_ru String?  @db.Text
   contacts_kz String?  @db.Text
   updatedAt   DateTime @default(now()) @updatedAt

@@ -20,6 +20,10 @@ export default function CmsForm({ initialData }: { initialData: any }) {
         video3_url: initialData?.video3_url || "",
         returns_ru: initialData?.returns_ru || "",
         returns_kz: initialData?.returns_kz || "",
+        terms_ru: initialData?.terms_ru || "",
+        terms_kz: initialData?.terms_kz || "",
+        blog_ru: initialData?.blog_ru || "",
+        blog_kz: initialData?.blog_kz || "",
         contacts_ru: initialData?.contacts_ru || "",
         contacts_kz: initialData?.contacts_kz || "",
     });
@@ -229,7 +233,55 @@ export default function CmsForm({ initialData }: { initialData: any }) {
                     </div>
                 </div>
             </div>
+            {/* УСЛОВИЯ ЗАКАЗА И ДОСТАВКИ */}
+            <div className="space-y-4 bg-white p-6 rounded-lg shadow-sm border">
+                <h2 className="text-xl font-semibold border-b pb-2">Условия заказа и доставки</h2>
+                <div className="grid grid-cols-1 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Текст (Русский)</label>
+                        <textarea
+                            rows={4}
+                            className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
+                            value={form.terms_ru}
+                            onChange={(e) => setForm({ ...form, terms_ru: e.target.value })}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Текст (Қазақша)</label>
+                        <textarea
+                            rows={4}
+                            className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
+                            value={form.terms_kz}
+                            onChange={(e) => setForm({ ...form, terms_kz: e.target.value })}
+                        />
+                    </div>
+                </div>
+            </div>
 
+            {/* БЛОГ */}
+            <div className="space-y-4 bg-white p-6 rounded-lg shadow-sm border">
+                <h2 className="text-xl font-semibold border-b pb-2">Блог</h2>
+                <div className="grid grid-cols-1 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Текст (Русский)</label>
+                        <textarea
+                            rows={4}
+                            className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
+                            value={form.blog_ru}
+                            onChange={(e) => setForm({ ...form, blog_ru: e.target.value })}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Текст (Қазақша)</label>
+                        <textarea
+                            rows={4}
+                            className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
+                            value={form.blog_kz}
+                            onChange={(e) => setForm({ ...form, blog_kz: e.target.value })}
+                        />
+                    </div>
+                </div>
+            </div>
             {/* КОНТАКТЫ */}
             <div className="space-y-4 bg-white p-6 rounded-lg shadow-sm border">
                 <h2 className="text-xl font-semibold border-b pb-2">Контакты</h2>

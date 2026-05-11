@@ -1058,6 +1058,10 @@ export async function updateSiteContent(data: any) {
                     video3_url: data.video3_url,
                     returns_ru: data.returns_ru,
                     returns_kz: data.returns_kz,
+                    terms_ru: data.terms_ru,
+                    terms_kz: data.terms_kz,
+                    blog_ru: data.blog_ru,
+                    blog_kz: data.blog_kz,
                     contacts_ru: data.contacts_ru,
                     contacts_kz: data.contacts_kz,
                 }
@@ -1072,6 +1076,10 @@ export async function updateSiteContent(data: any) {
                     video3_url: data.video3_url,
                     returns_ru: data.returns_ru,
                     returns_kz: data.returns_kz,
+                    terms_ru: data.terms_ru,
+                    terms_kz: data.terms_kz,
+                    blog_ru: data.blog_ru,
+                    blog_kz: data.blog_kz,
                     contacts_ru: data.contacts_ru,
                     contacts_kz: data.contacts_kz,
                 }
