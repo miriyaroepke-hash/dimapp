@@ -96,11 +96,13 @@ export async function getCdekCityCode(cityName: string): Promise<number | null> 
 export async function createCdekOrderPayload(order: any) {
     const token = await getAccessToken();
 
-    // 1. Fixed Package Data
-    const PACKAGE_WEIGHT_G = 700; // 0.7 kg
-    const PACKAGE_LENGTH = 10;
-    const PACKAGE_WIDTH = 10;
-    const PACKAGE_HEIGHT = 10;
+    // Package dimensions for a dress:
+    // 25×20×5 cm = 2500 cm³ → volumetric weight = 0.5 kg
+    // Physical weight 500g ≤ 0.5 kg → CDEK won't upcharge
+    const PACKAGE_WEIGHT_G = 500 * Math.max(1, order.items?.reduce((s: number, i: any) => s + i.quantity, 0) || 1);
+    const PACKAGE_LENGTH = 25;
+    const PACKAGE_WIDTH = 20;
+    const PACKAGE_HEIGHT = 5;
 
     // 2. Prepare Items
     const items = order.items.map((item: any) => {
