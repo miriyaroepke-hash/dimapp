@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { Check, MessageCircle, Clock, Truck, CreditCard } from "lucide-react";
-import { confirmWebsiteOrder } from "./actions";
+import { Check, MessageCircle, Clock, Truck, CreditCard, XCircle } from "lucide-react";
+import { confirmWebsiteOrder, cancelWebsiteOrder } from "./actions";
 
 interface OrderItem {
     id: number;
@@ -28,6 +28,7 @@ interface Order {
 
 export default function WebsiteOrdersClient({ orders }: { orders: Order[] }) {
     const [isConfirming, setIsConfirming] = useState<number | null>(null);
+    const [isCancelling, setIsCancelling] = useState<number | null>(null);
 
     const handleConfirm = async (id: number) => {
         if (!confirm("Подтвердить заказ? Он будет отправлен в 'План дня'.")) return;
@@ -38,6 +39,17 @@ export default function WebsiteOrdersClient({ orders }: { orders: Order[] }) {
             alert(res.error || "Ошибка при подтверждении");
         }
         setIsConfirming(null);
+    };
+
+    const handleCancel = async (id: number) => {
+        if (!confirm("Вы уверены, что хотите отменить этот заказ? Списанные вещи вернутся на склад.")) return;
+        
+        setIsCancelling(id);
+        const res = await cancelWebsiteOrder(id);
+        if (!res.success) {
+            alert(res.error || "Ошибка при отмене");
+        }
+        setIsCancelling(null);
     };
 
     const handleWhatsApp = (phone: string | null, orderNumber: string) => {
@@ -115,18 +127,33 @@ export default function WebsiteOrdersClient({ orders }: { orders: Order[] }) {
                                 </div>
                             </div>
 
-                            <div className="p-4 border-t border-gray-100 bg-gray-50 grid grid-cols-2 gap-2 mt-auto">
+                            <div className="p-4 border-t border-gray-100 bg-gray-50 flex gap-2 mt-auto">
                                 <button 
                                     onClick={() => handleWhatsApp(order.clientPhone, order.orderNumber)}
-                                    className="flex items-center justify-center gap-2 px-4 py-2 bg-[#25D366] text-white rounded-lg font-medium hover:bg-[#128C7E] transition-colors"
+                                    className="flex-1 flex items-center justify-center gap-1 px-2 py-2 bg-[#25D366] text-white rounded-lg font-medium hover:bg-[#128C7E] transition-colors text-sm"
+                                    title="Написать в WhatsApp"
                                 >
                                     <MessageCircle className="w-4 h-4" />
-                                    WhatsApp
+                                    WA
+                                </button>
+                                <button 
+                                    onClick={() => handleCancel(order.id)}
+                                    disabled={isCancelling === order.id || isConfirming === order.id}
+                                    className="flex-1 flex items-center justify-center gap-1 px-2 py-2 bg-red-100 text-red-600 rounded-lg font-medium hover:bg-red-200 transition-colors disabled:opacity-50 text-sm"
+                                >
+                                    {isCancelling === order.id ? (
+                                        "..."
+                                    ) : (
+                                        <>
+                                            <XCircle className="w-4 h-4" />
+                                            Отмена
+                                        </>
+                                    )}
                                 </button>
                                 <button 
                                     onClick={() => handleConfirm(order.id)}
-                                    disabled={isConfirming === order.id}
-                                    className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                    disabled={isConfirming === order.id || isCancelling === order.id}
+                                    className="flex-[2] flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 text-sm"
                                 >
                                     {isConfirming === order.id ? (
                                         "..."
