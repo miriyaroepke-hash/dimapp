@@ -1,0 +1,1 @@
+import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient(); async function main() { const order = await prisma.order.findFirst({ orderBy: { id: 'desc' } }); console.log(order); } main();  
