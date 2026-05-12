@@ -213,19 +213,22 @@ export async function createCdekOrderPayload(order: any) {
         }
     }
 
-    const payload = {
+    // Determine tariff based on delivery method
+    const isPvz = order.deliveryMethod === 'CDEK_PVZ';
+    const tariffCode = isPvz ? 136 : 137;
+
+    const payload: any = {
         type: "1", // Online store order
         number: `${order.orderNumber}-${Math.random().toString(36).substring(2, 6)}`,
-        tariff_code: 137, // Посылка склад-дверь (Parcel Warehouse-Door)
+        tariff_code: tariffCode,
         comment: `Order ${order.orderNumber}. ${order.comment || ""}`.trim(),
         recipient: {
             name: order.clientName || "Client",
             phones: [{ number: formatCdekPhone(order.clientPhone || "") }],
         },
         from_location: {
-            code: "4756", // Almaty (Verified via API)
+            code: "4756", // Almaty
         },
-        to_location: toLocation,
         packages: [{
             number: "1",
             weight: PACKAGE_WEIGHT_G,
@@ -235,6 +238,13 @@ export async function createCdekOrderPayload(order: any) {
             items: cdekItems
         }]
     };
+
+    // PVZ: use delivery_point code; Courier: use to_location address
+    if (isPvz && order.cdekPvzCode) {
+        payload.delivery_point = order.cdekPvzCode;
+    } else {
+        payload.to_location = toLocation;
+    }
 
 
     console.log("CDEK PAYLOAD:", JSON.stringify(payload, null, 2));
