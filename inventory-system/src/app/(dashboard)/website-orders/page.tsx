@@ -22,5 +22,15 @@ export default async function WebsiteOrdersPage() {
         orderBy: { createdAt: "desc" }
     });
 
-    return <WebsiteOrdersClient orders={unconfirmedOrders} />;
+    const tickets = await prisma.ticket.findMany({
+        include: {
+            customer: true,
+            messages: {
+                orderBy: { createdAt: 'asc' }
+            }
+        },
+        orderBy: { updatedAt: 'desc' }
+    });
+
+    return <WebsiteOrdersClient orders={unconfirmedOrders} tickets={tickets} />;
 }

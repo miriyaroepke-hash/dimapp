@@ -16,7 +16,7 @@ const navItems = [
     { name: "Инвентаризация", href: "/stock-check", icon: ShoppingCart },
     { name: "Заказы", href: "/orders", icon: ShoppingCart },
     { name: "Архив", href: "/archive", icon: Package },
-    { name: "Тикеты", href: "/tickets", icon: ShoppingCart },
+
     { name: "Пользователи", href: "/users", icon: Settings },
     { name: "Конструктор сайта", href: "/cms", icon: Monitor },
 ];
