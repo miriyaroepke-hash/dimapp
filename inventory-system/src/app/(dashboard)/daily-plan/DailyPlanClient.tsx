@@ -27,7 +27,6 @@ interface Order {
     codAmount: number | null;
     totalAmount: number;
     createdAt: Date;
-    createdAt: Date;
     items: OrderItem[];
     trackingNumber?: string | null;
     status: string;
