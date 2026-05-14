@@ -367,6 +367,30 @@ export async function updateOrderStatus(orderIds: number[], status: string) {
     }
 }
 
+export async function updateOrderTrackingAndStatus(orderId: number, status: string, trackingNumber?: string) {
+    try {
+        const data: any = { status };
+        if (status === "DELIVERED") {
+            data.deliveredAt = new Date();
+        }
+        if (trackingNumber !== undefined) {
+            data.trackingNumber = trackingNumber;
+        }
+
+        await prisma.order.update({
+            where: { id: orderId },
+            data
+        });
+        
+        revalidatePath("/daily-plan");
+        revalidatePath("/archive");
+        return { success: true };
+    } catch (e: any) {
+        console.error("Update Tracking/Status Error:", e);
+        return { error: e.message || "Не удалось обновить заказ" };
+    }
+}
+
 import { createCdekOrderPayload } from "@/lib/cdek";
 
 export async function createCdekOrder(orderId: number) {
@@ -1291,5 +1315,42 @@ export async function transferProducts(items: { id: number, qty: number }[], dir
     } catch (e: any) {
         console.error("Transfer error:", e);
         return { success: false, error: e.message || "Ошибка перемещения" };
+    }
+}
+
+export async function replyToTicket(ticketId: number, content: string) {
+    try {
+        await prisma.message.create({
+            data: {
+                ticketId,
+                senderId: 0, // Admin doesn't need a specific ID for now
+                senderType: "MANAGER",
+                content
+            }
+        });
+
+        // Update ticket updated at
+        await prisma.ticket.update({
+            where: { id: ticketId },
+            data: { updatedAt: new Date() }
+        });
+
+        revalidatePath("/tickets");
+        return { success: true };
+    } catch (e: any) {
+        return { error: "Ошибка при отправке сообщения" };
+    }
+}
+
+export async function closeTicket(ticketId: number) {
+    try {
+        await prisma.ticket.update({
+            where: { id: ticketId },
+            data: { status: "CLOSED" }
+        });
+        revalidatePath("/tickets");
+        return { success: true };
+    } catch (e: any) {
+        return { error: "Ошибка при закрытии тикета" };
     }
 }

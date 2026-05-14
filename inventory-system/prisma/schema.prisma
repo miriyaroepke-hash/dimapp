@@ -127,7 +127,8 @@ model Order {
   paymentMethod  String   @default("CASH") // CASH, CARD, TRANSFER, KASPI, COD (Cash on Delivery)
   codAmount      Float?   // Amount for Cash on Delivery (CDEK)
 
-  status         String   @default("PENDING") // PENDING, PROCESSING, SENT, DELIVERED, COMPLETED, CANCELLED
+  status         String   @default("PENDING") // PENDING, PROCESSING, SENT, READY_FOR_PICKUP, DELIVERED, COMPLETED, CANCELLED, RETURNED
+  deliveredAt    DateTime?
   totalAmount    Float
   source         String   @default("POS") // POS, WEBSITE, KASPI
   createdAt      DateTime @default(now())
@@ -142,6 +143,7 @@ model Order {
   customerId     String?  // For storefront users
   customer       Customer? @relation(fields: [customerId], references: [id])
   returns        ReturnRequest[]
+  tickets        Ticket[]
 
   // Delivery & Fees
   deliveryCost   Float?   @default(0)
@@ -203,11 +205,13 @@ model Customer {
   lastName        String?
   address         String?  // Default saved address
   discountPercent Int      @default(0)
+  totalSpent      Float    @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
   orders          Order[]
   returns         ReturnRequest[]
+  tickets         Ticket[]
 }
 
 model ReturnRequest {
@@ -221,4 +225,34 @@ model ReturnRequest {
   items           Json     // Which items and quantities are being returned
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model Ticket {
+  id          String    @id @default(cuid())
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  
+  orderId     Int?
+  order       Order?    @relation(fields: [orderId], references: [id])
+  
+  status      String    @default("NEW") // NEW, IN_PROGRESS, CLOSED
+  subject     String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  messages    Message[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  sender    String   // 'CUSTOMER' or 'MANAGER'
+  userId    Int?     // User ID of manager if sender == 'MANAGER'
+  text      String   @db.Text
+  isRead    Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
 }

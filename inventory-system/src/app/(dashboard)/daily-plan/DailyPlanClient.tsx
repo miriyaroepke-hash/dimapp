@@ -3,9 +3,9 @@
 import { useState, useMemo } from "react";
 import { format, differenceInDays } from "date-fns";
 import * as XLSX from "xlsx";
-import { Download, Check, X } from "lucide-react";
-import { updateOrderStatus, generateCdekPrintUrl } from "@/app/actions";
-import { Loader2, Printer } from "lucide-react";
+import { Download, Check, X, Truck, Box, PackageCheck } from "lucide-react";
+import { updateOrderStatus, generateCdekPrintUrl, updateOrderTrackingAndStatus } from "@/app/actions";
+import { Loader2, Printer, Save } from "lucide-react";
 
 
 interface OrderItem {
@@ -27,8 +27,10 @@ interface Order {
     codAmount: number | null;
     totalAmount: number;
     createdAt: Date;
+    createdAt: Date;
     items: OrderItem[];
     trackingNumber?: string | null;
+    status: string;
 }
 
 import { createCdekOrder } from "@/app/actions";
@@ -432,6 +434,62 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
                                                     </button>
                                                 </div>
                                             )}
+                                            
+                                            <div className="mt-4 pt-3 border-t border-gray-100 flex flex-col gap-2">
+                                                <div className="flex flex-col gap-1">
+                                                    <label className="text-xs font-semibold text-gray-500">Статус заказа</label>
+                                                    <select 
+                                                        className="text-xs p-1 border rounded"
+                                                        value={order.status}
+                                                        onChange={async (e) => {
+                                                            const newStatus = e.target.value;
+                                                            if (!confirm(`Изменить статус на "${newStatus}"?`)) return;
+                                                            await updateOrderTrackingAndStatus(order.id, newStatus, order.trackingNumber || undefined);
+                                                        }}
+                                                    >
+                                                        <option value="PENDING">В обработке</option>
+                                                        <option value="PROCESSING">Собирается</option>
+                                                        <option value="SENT">Отправлен (В пути)</option>
+                                                        <option value="READY_FOR_PICKUP">Ждет выдачи</option>
+                                                        <option value="DELIVERED">Выдан (Доставлен)</option>
+                                                    </select>
+                                                </div>
+
+                                                {(order.deliveryMethod === 'POST' || order.deliveryMethod === 'YANDEX') && (
+                                                    <div className="flex flex-col gap-1 mt-1">
+                                                        <label className="text-xs font-semibold text-gray-500">Трек-код / Ссылка</label>
+                                                        <div className="flex gap-1">
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="Введите трек-код" 
+                                                                className="text-xs p-1 border rounded w-full"
+                                                                defaultValue={order.trackingNumber || ""}
+                                                                onBlur={async (e) => {
+                                                                    if (e.target.value !== order.trackingNumber) {
+                                                                        await updateOrderTrackingAndStatus(order.id, order.status, e.target.value);
+                                                                    }
+                                                                }}
+                                                                onKeyDown={async (e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        e.preventDefault();
+                                                                        await updateOrderTrackingAndStatus(order.id, order.status, (e.target as HTMLInputElement).value);
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <button 
+                                                                className="bg-gray-100 p-1 rounded text-gray-600 hover:bg-gray-200"
+                                                                onClick={(e) => {
+                                                                    const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                                                    updateOrderTrackingAndStatus(order.id, order.status, input.value);
+                                                                }}
+                                                                title="Сохранить"
+                                                            >
+                                                                <Save className="w-3 h-3" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="text-xs">
