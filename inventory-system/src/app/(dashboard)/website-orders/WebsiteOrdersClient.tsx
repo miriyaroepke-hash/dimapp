@@ -273,7 +273,7 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                     className={`p-4 border-b cursor-pointer transition-colors ${selectedTicketId === ticket.id ? 'bg-purple-50 border-l-4 border-l-purple-600' : 'hover:bg-gray-100 border-l-4 border-l-transparent'}`}
                                 >
                                     <div className="flex justify-between items-start mb-1">
-                                        <h3 className="font-semibold text-sm truncate pr-2">{ticket.subject}</h3>
+                                        <h3 className="font-semibold text-sm truncate pr-2">Чат с клиентом</h3>
                                         <span className={`text-xs px-2 py-0.5 rounded font-bold ${ticket.status === 'OPEN' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'}`}>
                                             {ticket.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
                                         </span>
@@ -299,20 +299,11 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                 {/* Chat Header */}
                                 <div className="p-4 border-b flex justify-between items-center bg-white shadow-sm z-10">
                                     <div>
-                                        <h2 className="font-bold text-lg">{selectedTicket.subject}</h2>
+                                        <h2 className="font-bold text-lg">Ксения (Вы) и {selectedTicket.customer?.firstName || 'Клиент'}</h2>
                                         <div className="text-sm text-gray-500">
                                             Клиент: {selectedTicket.customer?.firstName || 'Имя не указано'} ({selectedTicket.customer?.phone})
                                         </div>
                                     </div>
-                                    {selectedTicket.status === 'OPEN' && (
-                                        <button 
-                                            onClick={handleCloseTicket}
-                                            disabled={isSubmittingTicket}
-                                            className="flex items-center gap-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded transition-colors"
-                                        >
-                                            <CheckCircle className="w-4 h-4" /> Закрыть
-                                        </button>
-                                    )}
                                 </div>
 
                                 {/* Messages List */}
@@ -338,30 +329,24 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                 </div>
 
                                 {/* Reply Box */}
-                                {selectedTicket.status === 'OPEN' ? (
-                                    <div className="p-4 border-t bg-white">
-                                        <textarea 
-                                            value={replyContent}
-                                            onChange={e => setReplyContent(e.target.value)}
-                                            placeholder="Написать ответ клиенту..."
-                                            className="w-full border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                                            rows={3}
-                                        />
-                                        <div className="flex justify-end mt-2">
-                                            <button 
-                                                onClick={handleReply}
-                                                disabled={isSubmittingTicket || !replyContent.trim()}
-                                                className="bg-purple-600 text-white px-4 py-2 rounded font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors"
-                                            >
-                                                {isSubmittingTicket ? "Отправка..." : "Отправить"}
-                                            </button>
-                                        </div>
+                                <div className="p-4 border-t bg-white">
+                                    <textarea 
+                                        value={replyContent}
+                                        onChange={e => setReplyContent(e.target.value)}
+                                        placeholder="Написать ответ клиенту..."
+                                        className="w-full border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                        rows={3}
+                                    />
+                                    <div className="flex justify-end mt-2">
+                                        <button 
+                                            onClick={handleReply}
+                                            disabled={isSubmittingTicket || !replyContent.trim()}
+                                            className="bg-purple-600 text-white px-4 py-2 rounded font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                                        >
+                                            {isSubmittingTicket ? "Отправка..." : "Отправить"}
+                                        </button>
                                     </div>
-                                ) : (
-                                    <div className="p-4 border-t bg-gray-100 text-center text-sm text-gray-500 font-medium">
-                                        Обращение закрыто. Вы не можете отправлять новые сообщения.
-                                    </div>
-                                )}
+                                </div>
                             </>
                         ) : (
                             <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
