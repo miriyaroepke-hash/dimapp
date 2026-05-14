@@ -6,7 +6,7 @@ import { MessageSquare, User, Shield, CheckCircle } from "lucide-react";
 import { replyToTicket, closeTicket } from "@/app/actions";
 
 export default function TicketsClient({ tickets }: { tickets: any[] }) {
-    const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
+    const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
     const [replyContent, setReplyContent] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -110,7 +110,7 @@ export default function TicketsClient({ tickets }: { tickets: any[] }) {
                         {/* Messages List */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
                             {selectedTicket.messages.map((msg: any) => {
-                                const isCustomer = msg.senderType === "CUSTOMER";
+                                const isCustomer = msg.sender === "CUSTOMER";
                                 return (
                                     <div key={msg.id} className={`flex gap-3 ${isCustomer ? '' : 'flex-row-reverse'}`}>
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white ${isCustomer ? 'bg-gray-400' : 'bg-purple-600'}`}>
@@ -121,7 +121,7 @@ export default function TicketsClient({ tickets }: { tickets: any[] }) {
                                                 {format(new Date(msg.createdAt), "dd.MM.yyyy HH:mm")}
                                             </div>
                                             <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                                                {msg.content}
+                                                {msg.text}
                                             </div>
                                         </div>
                                     </div>

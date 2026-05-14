@@ -1318,14 +1318,14 @@ export async function transferProducts(items: { id: number, qty: number }[], dir
     }
 }
 
-export async function replyToTicket(ticketId: number, content: string) {
+export async function replyToTicket(ticketId: string, content: string) {
     try {
         await prisma.message.create({
             data: {
                 ticketId,
-                senderId: 0, // Admin doesn't need a specific ID for now
-                senderType: "MANAGER",
-                content
+                userId: 0,
+                sender: "MANAGER",
+                text: content
             }
         });
 
@@ -1342,7 +1342,7 @@ export async function replyToTicket(ticketId: number, content: string) {
     }
 }
 
-export async function closeTicket(ticketId: number) {
+export async function closeTicket(ticketId: string) {
     try {
         await prisma.ticket.update({
             where: { id: ticketId },
