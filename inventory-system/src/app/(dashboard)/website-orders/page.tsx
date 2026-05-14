@@ -24,7 +24,14 @@ export default async function WebsiteOrdersPage() {
 
     const tickets = await prisma.ticket.findMany({
         include: {
-            customer: true,
+            customer: {
+                include: {
+                    orders: {
+                        include: { items: true },
+                        orderBy: { createdAt: 'desc' }
+                    }
+                }
+            },
             messages: {
                 orderBy: { createdAt: 'asc' }
             }

@@ -258,7 +258,7 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
             {activeTab === "tickets" && (
                 <div className="flex h-[75vh] bg-white rounded-lg shadow border overflow-hidden">
                     {/* Sidebar List */}
-                    <div className="w-1/3 border-r flex flex-col bg-gray-50">
+                    <div className="w-1/4 border-r flex flex-col bg-gray-50 shrink-0">
                         <div className="p-4 border-b bg-white">
                             <h2 className="font-bold text-lg flex items-center gap-2">
                                 <MessageSquare className="w-5 h-5 text-purple-600" />
@@ -293,7 +293,7 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                     </div>
 
                     {/* Chat Area */}
-                    <div className="flex-1 flex flex-col bg-white">
+                    <div className="flex-1 flex flex-col bg-white border-r">
                         {selectedTicket ? (
                             <>
                                 {/* Chat Header */}
@@ -370,6 +370,54 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                             </div>
                         )}
                     </div>
+
+                    {/* Order History Sidebar */}
+                    {selectedTicket && (
+                        <div className="w-1/4 flex flex-col bg-gray-50 shrink-0">
+                            <div className="p-4 border-b bg-white">
+                                <h2 className="font-bold text-lg">История заказов</h2>
+                                <p className="text-xs text-gray-500">
+                                    Всего: {selectedTicket.customer?.orders?.length || 0}
+                                </p>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                {selectedTicket.customer?.orders?.length > 0 ? (
+                                    selectedTicket.customer.orders.map((order: any) => (
+                                        <div key={order.id} className="bg-white p-3 rounded shadow-sm border border-gray-200 text-sm">
+                                            <div className="flex justify-between items-start mb-2 border-b pb-2">
+                                                <div>
+                                                    <div className="font-bold">Заказ {order.orderNumber}</div>
+                                                    <div className="text-xs text-gray-500">{format(new Date(order.createdAt), "dd.MM.yyyy")}</div>
+                                                </div>
+                                                <div className={`text-xs px-2 py-0.5 rounded font-bold ${
+                                                    order.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 
+                                                    order.status === 'CANCELLED' ? 'bg-red-100 text-red-700' : 
+                                                    'bg-blue-100 text-blue-700'
+                                                }`}>
+                                                    {order.status}
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1 mb-2">
+                                                {order.items?.map((item: any, idx: number) => (
+                                                    <div key={idx} className="flex justify-between text-xs">
+                                                        <span className="truncate pr-2">{item.name} ({item.size})</span>
+                                                        <span>x{item.quantity}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="text-right font-bold pt-2 border-t text-gray-900">
+                                                {order.totalAmount.toLocaleString()} ₸
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center text-gray-500 text-sm mt-4">
+                                        Нет заказов
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
