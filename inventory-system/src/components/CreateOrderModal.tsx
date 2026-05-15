@@ -581,7 +581,7 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
                         <div className="p-4 border-t bg-white shadow-top z-10">
                             <button
                                 onClick={handleCreate}
-                                disabled={loading || cart.length === 0 || !customerName || !customerPhone}
+                                disabled={loading || cart.length === 0 || (!isQuickSale && (!customerName || !customerPhone))}
                                 className="w-full py-3 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 disabled:opacity-50 flex justify-center items-center"
                             >
                                 {loading ? "Создание..." : "Оформить заказ"}
