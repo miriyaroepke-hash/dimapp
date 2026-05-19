@@ -1,6 +1,7 @@
 export async function sendTelegramMessage(message: string) {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const chatIdEnv = process.env.TELEGRAM_CHAT_ID;
+    // Force sending to the group chat only
+    const botToken = '8265144846:AAGRAFhMQ-eplanFEbmqnbFCy9y4rJwbdgE';
+    const chatIdEnv = '-1001807702533';
 
     if (!botToken || !chatIdEnv) {
         console.warn("Telegram Token or Chat ID is missing. Message not sent.");
