@@ -2,13 +2,19 @@ import prisma from "@/lib/prisma";
 import ShowroomClient from "./ShowroomClient";
 
 export default async function ShowroomPage() {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
     // Fetch items that require transfer from showroom to warehouse
     const transferTasks = await prisma.orderItem.findMany({
         where: {
             requiresTransfer: true,
             order: {
                 status: {
-                    in: ["PENDING", "PROCESSING"]
+                    notIn: ["CANCELLED", "RETURNED"]
+                },
+                createdAt: {
+                    gte: thirtyDaysAgo
                 }
             }
         },
@@ -31,9 +37,21 @@ export default async function ShowroomPage() {
         productName: item.name,
         productSize: item.size,
         productSku: item.product?.sku || item.sku,
+        image: item.image || item.product?.image || null,
         quantity: item.quantity,
-        date: item.order.createdAt
+        date: item.order.createdAt.toISOString() // pass as string for client component props
     }));
+
+    // Group by date (DD.MM.YYYY)
+    const groupedTransfers: Record<string, typeof pendingTransfers> = {};
+    for (const task of pendingTransfers) {
+        const dateObj = new Date(task.date);
+        const dateKey = dateObj.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        if (!groupedTransfers[dateKey]) {
+            groupedTransfers[dateKey] = [];
+        }
+        groupedTransfers[dateKey].push(task);
+    }
 
     return (
         <div className="space-y-6">
@@ -42,7 +60,7 @@ export default async function ShowroomPage() {
                 Управление оффлайн-продажами и передачей товаров на доставку.
             </p>
             
-            <ShowroomClient pendingTransfers={pendingTransfers} />
+            <ShowroomClient groupedTransfers={groupedTransfers} />
         </div>
     );
 }
