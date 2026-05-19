@@ -39,6 +39,7 @@ export default async function ShowroomPage() {
         productSku: item.product?.sku || item.sku,
         image: item.image || item.product?.image || null,
         quantity: item.quantity,
+        isTransferred: item.isTransferred,
         date: item.order.createdAt.toISOString() // pass as string for client component props
     }));
 

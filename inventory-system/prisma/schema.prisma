@@ -167,6 +167,7 @@ model OrderItem {
   quantity  Int
   price     Float
   requiresTransfer Boolean @default(false) // If true, this item was picked from Showroom and needs transfer
+  isTransferred    Boolean @default(false) // If true, manager confirmed transfer from Showroom
 }
 
 model OrderHistory {

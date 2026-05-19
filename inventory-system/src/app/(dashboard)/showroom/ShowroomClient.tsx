@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import CreateOrderModal from "@/components/CreateOrderModal";
-import { PackageOpen, Clock, Tag } from "lucide-react";
+import { PackageOpen, Clock, Tag, CheckCircle2, Circle } from "lucide-react";
+import { toggleTransferStatus } from "./actions";
 
 interface TransferTask {
     id: number;
@@ -14,10 +15,18 @@ interface TransferTask {
     quantity: number;
     date: string;
     image: string | null;
+    isTransferred: boolean;
 }
 
 export default function ShowroomClient({ groupedTransfers }: { groupedTransfers: Record<string, TransferTask[]> }) {
     const [isQuickSaleOpen, setIsQuickSaleOpen] = useState(false);
+    const [isPending, startTransition] = useTransition();
+
+    const handleToggleStatus = (id: number, currentStatus: boolean) => {
+        startTransition(async () => {
+            await toggleTransferStatus(id, !currentStatus);
+        });
+    };
 
     return (
         <div className="space-y-6">
@@ -61,9 +70,21 @@ export default function ShowroomClient({ groupedTransfers }: { groupedTransfers:
                                 </div>
                                 <div className="divide-y divide-gray-100">
                                     {tasks.map((task) => (
-                                        <div key={task.id} className="p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center hover:bg-gray-50 transition-colors">
+                                        <div key={task.id} className={`p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center transition-colors ${task.isTransferred ? "bg-gray-50/50 opacity-60" : "hover:bg-gray-50"}`}>
+                                            <button 
+                                                onClick={() => handleToggleStatus(task.id, task.isTransferred)}
+                                                disabled={isPending}
+                                                className="mt-2 sm:mt-0 flex-shrink-0 focus:outline-none disabled:opacity-50"
+                                            >
+                                                {task.isTransferred ? (
+                                                    <CheckCircle2 className="w-8 h-8 text-green-500" />
+                                                ) : (
+                                                    <Circle className="w-8 h-8 text-gray-300 hover:text-green-400 transition-colors" />
+                                                )}
+                                            </button>
+                                            
                                             {task.image ? (
-                                                <img src={task.image} alt={task.productName} className="w-16 h-16 object-cover rounded-md border border-gray-200" />
+                                                <img src={task.image} alt={task.productName} className={`w-16 h-16 object-cover rounded-md border border-gray-200 ${task.isTransferred ? 'grayscale' : ''}`} />
                                             ) : (
                                                 <div className="w-16 h-16 bg-gray-200 rounded-md border border-gray-300 flex items-center justify-center text-gray-400">
                                                     <PackageOpen className="w-6 h-6" />
@@ -71,7 +92,7 @@ export default function ShowroomClient({ groupedTransfers }: { groupedTransfers:
                                             )}
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <h4 className="font-bold text-gray-900 text-lg">{task.productName}</h4>
+                                                    <h4 className={`font-bold text-lg ${task.isTransferred ? 'text-gray-500 line-through' : 'text-gray-900'}`}>{task.productName}</h4>
                                                     {task.productSize && (
                                                         <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded border">
                                                             Размер: {task.productSize}
