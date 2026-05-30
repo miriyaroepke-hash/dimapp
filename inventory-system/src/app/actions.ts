@@ -1354,3 +1354,41 @@ export async function closeTicket(ticketId: string) {
         return { error: "Ошибка при закрытии тикета" };
     }
 }
+
+export async function bulkAssignCategory(productIds: number[], categoryId: string) {
+    for (const id of productIds) {
+        const product = await prisma.storefrontProduct.findUnique({ where: { id } });
+        if (product) {
+            const categories = new Set(product.categories || []);
+            categories.add(categoryId);
+            await prisma.storefrontProduct.update({ where: { id }, data: { categories: Array.from(categories) } });
+        }
+    }
+    revalidatePath("/storefront");
+}
+
+export async function getCategoryContents() {
+    try {
+        const contents = await prisma.categoryContent.findMany();
+        const result: Record<string, any> = {};
+        contents.forEach(c => { result[c.id] = c; });
+        return result;
+    } catch (e) {
+        console.error(e);
+        return {};
+    }
+}
+
+export async function saveCategoryContent(id: string, text_ru: string, text_kz: string, image?: string) {
+    try {
+        await prisma.categoryContent.upsert({
+            where: { id },
+            update: { text_ru, text_kz, ...(image ? { image } : {}) },
+            create: { id, text_ru, text_kz, ...(image ? { image } : {}) }
+        });
+        revalidatePath("/cms");
+ } catch(e) {
+ console.error(e);
+ throw e;
+ }
+}

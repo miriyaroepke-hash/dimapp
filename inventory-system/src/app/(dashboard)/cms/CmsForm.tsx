@@ -1,13 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { updateSiteContent } from "@/app/actions";
+import { updateSiteContent, saveCategoryContent } from "@/app/actions";
 import { Check, Loader2, ExternalLink, Image } from "lucide-react";
 
 // Secret token to activate admin mode on storefront (stored in localStorage on vitrina)
 const ADMIN_TOKEN = "dimmiani_admin_2024";
 
-export default function CmsForm({ initialData }: { initialData: any }) {
+const CATEGORIES = [
+    { id: 'new', label: 'Новинки' },
+    { id: 'dresses', label: 'Платья' },
+    { id: 'pants', label: 'Брюки' },
+    { id: 'shirts', label: 'Рубашки' },
+    { id: 'skirts', label: 'Юбки' },
+    { id: 'suits', label: 'Костюмы' },
+    { id: 'sale', label: 'Скидки (SALE)' },
+];
+
+export default function CmsForm({ initialData, initialCategories }: { initialData: any, initialCategories: any }) {
     const [isLoading, setIsLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [form, setForm] = useState({
@@ -27,9 +37,20 @@ export default function CmsForm({ initialData }: { initialData: any }) {
         contacts_ru: initialData?.contacts_ru || "",
         contacts_kz: initialData?.contacts_kz || "",
     });
+    const [categoryContents, setCategoryContents] = useState<Record<string, any>>(initialCategories || {});
     const [uploadingField, setUploadingField] = useState<string | null>(null);
 
-    const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
+    const handleCategorySave = async (catId: string) => {
+        setIsLoading(true);
+        try {
+            const cat = categoryContents[catId] || { id: catId };
+            await saveCategoryContent(catId, cat.text_ru || "", cat.text_kz || "", cat.image);
+            alert('Контент категории сохранен!');
+        } catch (e) { alert('Ошибка.'); }
+        finally { setIsLoading(false); }
+    };
+
+    const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string, isCat = false, catId = "") => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -60,7 +81,11 @@ export default function CmsForm({ initialData }: { initialData: any }) {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error?.message || "Upload failed");
 
-            setForm(prev => ({ ...prev, [fieldName]: data.secure_url }));
+            if (isCat) {
+                setCategoryContents(prev => ({ ...prev, [catId]: { ...prev[catId], image: data.secure_url } }));
+            } else {
+                setForm(prev => ({ ...prev, [fieldName]: data.secure_url }));
+            }
         } catch (err: any) {
             alert("Ошибка при загрузке: " + err.message);
         } finally {
@@ -304,6 +329,69 @@ export default function CmsForm({ initialData }: { initialData: any }) {
                             onChange={(e) => setForm({ ...form, contacts_kz: e.target.value })}
                         />
                     </div>
+                </div>
+            </div>
+
+            {/* КОНТЕНТ КАТЕГОРИЙ */}
+            <div className="space-y-4 bg-white p-6 rounded-lg shadow-sm border">
+                <h2 className="text-xl font-semibold border-b pb-2">Категории каталога</h2>
+                <p className="text-sm text-gray-500 mb-4">Настройте баннер и описание для каждой вкладки в каталоге.</p>
+                <div className="space-y-8">
+                    {CATEGORIES.map(cat => {
+                        const content = categoryContents[cat.id] || {};
+                        return (
+                            <div key={cat.id} className="border p-4 rounded-lg bg-gray-50/50">
+                                <h3 className="font-semibold text-lg mb-3">{cat.label}</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Описание категории (RU)</label>
+                                            <textarea
+                                                rows={3}
+                                                className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
+                                                value={content.text_ru || ''}
+                                                onChange={e => setCategoryContents(prev => ({ ...prev, [cat.id]: { ...prev[cat.id], text_ru: e.target.value } }))}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Описание категории (KZ)</label>
+                                            <textarea
+                                                rows={3}
+                                                className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
+                                                value={content.text_kz || ''}
+                                                onChange={e => setCategoryContents(prev => ({ ...prev, [cat.id]: { ...prev[cat.id], text_kz: e.target.value } }))}
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleCategorySave(cat.id)}
+                                            className="px-4 py-1.5 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition text-sm"
+                                        >
+                                            Сохранить тексты категории
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Баннер категории</label>
+                                        {content.image ? (
+                                            <img src={content.image} alt="" className="w-full h-32 object-cover rounded mb-2 shadow-sm" />
+                                        ) : (
+                                            <div className="w-full h-32 bg-gray-200 rounded flex items-center justify-center text-gray-500 mb-2">Нет баннера</div>
+                                        )}
+                                        <label className="relative flex items-center justify-center px-4 py-1.5 bg-white text-gray-700 font-medium rounded border hover:bg-gray-50 transition cursor-pointer text-sm">
+                                            {uploadingField === `cat-${cat.id}` ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Загрузка...</> : "Загрузить картинку"}
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                                                onChange={(e) => handleMediaUpload(e, `cat-${cat.id}`, true, cat.id)}
+                                                disabled={uploadingField !== null}
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 

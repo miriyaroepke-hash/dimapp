@@ -1,8 +1,9 @@
-import { getSiteContent } from "@/app/actions";
+import { getSiteContent, getCategoryContents } from "@/app/actions";
 import CmsForm from "./CmsForm";
 
 export default async function CmsPage() {
     const content = await getSiteContent();
+    const categories = await getCategoryContents();
 
     return (
         <div className="space-y-6 max-w-4xl">
@@ -13,7 +14,7 @@ export default async function CmsPage() {
                 </p>
             </div>
             
-            <CmsForm initialData={content} />
+            <CmsForm initialData={content} initialCategories={categories} />
         </div>
     );
 }

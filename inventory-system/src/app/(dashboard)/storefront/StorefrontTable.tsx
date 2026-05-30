@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { deleteStorefrontProduct } from "@/app/actions";
-import { Trash2, ExternalLink, Tag, CheckSquare, Square, Edit2 } from "lucide-react";
+import { deleteStorefrontProduct, bulkAssignCategory } from "@/app/actions";
+import { Trash2, ExternalLink, Tag, CheckSquare, Square, Edit2, FolderPlus } from "lucide-react";
 import DiscountStorefrontModal from "./DiscountStorefrontModal";
 import EditStorefrontModal from "./EditStorefrontModal";
 
@@ -24,6 +24,7 @@ interface StorefrontProduct {
     isActive: boolean;
     products: Product[];
     discountPrice: number | null;
+    categories: string[];
 }
 
 export default function StorefrontTable({ products }: { products: StorefrontProduct[] }) {
@@ -31,6 +32,18 @@ export default function StorefrontTable({ products }: { products: StorefrontProd
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<StorefrontProduct | null>(null);
+    const [bulkCategory, setBulkCategory] = useState("");
+    const [isAssigning, setIsAssigning] = useState(false);
+
+    const CATEGORIES = [
+        { id: 'new', label: 'Новинки' },
+        { id: 'dresses', label: 'Платья' },
+        { id: 'pants', label: 'Брюки' },
+        { id: 'shirts', label: 'Рубашки' },
+        { id: 'skirts', label: 'Юбки' },
+        { id: 'suits', label: 'Костюмы' },
+        { id: 'sale', label: 'Скидки (SALE)' },
+    ];
 
     const toggleSelectAll = () => {
         if (selectedIds.length === products.length) {
@@ -60,15 +73,48 @@ export default function StorefrontTable({ products }: { products: StorefrontProd
         }
     };
 
+    const handleBulkCategory = async () => {
+        if (!bulkCategory || selectedIds.length === 0) return;
+        setIsAssigning(true);
+        try {
+            await bulkAssignCategory(selectedIds, bulkCategory);
+            alert("Категория добавлена!");
+            setSelectedIds([]);
+        } catch (error: any) {
+            alert("Ошибка при назначении категории");
+        } finally {
+            setIsAssigning(false);
+        }
+    };
+
     return (
         <div className="space-y-4">
             {/* Bulk Actions Toolbar */}
             {selectedIds.length > 0 && (
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-red-100 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-                    <div className="flex items-center gap-2">
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-blue-100 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-4">
                         <span className="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
                             Выбрано: {selectedIds.length}
                         </span>
+                        
+                        <div className="flex items-center gap-2 border-l pl-4 border-gray-200">
+                            <select
+                                value={bulkCategory}
+                                onChange={(e) => setBulkCategory(e.target.value)}
+                                className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+                            >
+                                <option value="">Выберите категорию...</option>
+                                {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                            </select>
+                            <button
+                                onClick={handleBulkCategory}
+                                disabled={isAssigning || !bulkCategory}
+                                className="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 px-3 py-1.5 rounded flex items-center gap-2 text-sm font-medium transition-colors disabled:opacity-50"
+                            >
+                                <FolderPlus className="w-4 h-4" />
+                                {isAssigning ? "Назначаем..." : "В категорию"}
+                            </button>
+                        </div>
                     </div>
                     
                     <div className="flex gap-2">
@@ -148,6 +194,12 @@ export default function StorefrontTable({ products }: { products: StorefrontProd
                                     <div className="text-sm text-gray-500 mt-1 flex items-center gap-1">
                                         <span className={`inline-block w-2 h-2 rounded-full ${p.isActive ? 'bg-green-500' : 'bg-gray-300'}`}></span>
                                         {p.isActive ? "Отображается на сайте" : "Скрыто"}
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                        {(p.categories || []).map(cat => {
+                                            const label = CATEGORIES.find(c => c.id === cat)?.label || cat;
+                                            return <span key={cat} className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-100 px-1.5 py-0.5 rounded">{label}</span>;
+                                        })}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">

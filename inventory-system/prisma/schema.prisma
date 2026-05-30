@@ -8,7 +8,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url = env("DATABASE_URL")
 }
 
 model User {
@@ -60,6 +60,7 @@ model StorefrontProduct {
   video         String?   // Instagram video link
   isActive      Boolean   @default(true) // Whether to display on storefront
   discountPrice Float?    // Promotional exact price. If set, this overrides product variant prices for display
+  categories    String[]  @default([]) // Categories the product belongs to (e.g. "dresses", "new")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -92,13 +93,21 @@ model SiteContent {
   video3_url  String?
   returns_ru  String?  @db.Text
   returns_kz  String?  @db.Text
-  terms_ru    String?  @db.Text
-  terms_kz    String?  @db.Text
-  blog_ru     String?  @db.Text
-  blog_kz     String?  @db.Text
   contacts_ru String?  @db.Text
   contacts_kz String?  @db.Text
+  blog_ru     String?  @db.Text
+  blog_kz     String?  @db.Text
+  terms_ru    String?  @db.Text
+  terms_kz    String?  @db.Text
   updatedAt   DateTime @default(now()) @updatedAt
+}
+
+model CategoryContent {
+  id        String   @id // e.g. "new", "dresses", "pants", "shirts", "skirts", "suits", "sale"
+  text_ru   String?  @db.Text
+  text_kz   String?  @db.Text
+  image     String?  // URL to uploaded image
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Order {
@@ -166,8 +175,8 @@ model OrderItem {
   image     String? // Snapshot or custom image
   quantity  Int
   price     Float
-  requiresTransfer Boolean @default(false) // If true, this item was picked from Showroom and needs transfer
-  isTransferred    Boolean @default(false) // If true, manager confirmed transfer from Showroom
+  isTransferred Boolean @default(false)
+  requiresTransfer Boolean @default(false)
 }
 
 model OrderHistory {
