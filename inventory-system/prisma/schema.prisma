@@ -266,3 +266,18 @@ model Message {
   
   createdAt DateTime @default(now())
 }
+
+model BlogPost {
+  id          Int      @id @default(autoincrement())
+  slug        String   @unique
+  title_ru    String
+  title_kz    String?
+  excerpt_ru  String?  @db.Text
+  excerpt_kz  String?  @db.Text
+  content_ru  String   @db.Text
+  content_kz  String?  @db.Text
+  image       String?
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

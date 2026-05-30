@@ -1392,3 +1392,64 @@ export async function saveCategoryContent(id: string, text_ru: string, text_kz: 
  throw e;
  }
 }
+
+// =========================
+// BLOG POSTS
+// =========================
+
+export async function getBlogPosts(includeUnpublished = false) {
+    try {
+        return await prisma.blogPost.findMany({
+            where: includeUnpublished ? {} : { isPublished: true },
+            orderBy: { createdAt: 'desc' }
+        });
+    } catch (e) {
+        console.error(e);
+        return [];
+    }
+}
+
+export async function getBlogPost(id: number) {
+    try {
+        return await prisma.blogPost.findUnique({ where: { id } });
+    } catch (e) {
+        console.error(e);
+        return null;
+    }
+}
+
+export async function createBlogPost(data: any) {
+    try {
+        await prisma.blogPost.create({ data });
+        revalidatePath('/cms/blog');
+        revalidatePath('/blog');
+        return { success: true };
+    } catch (e: any) {
+        console.error(e);
+        return { success: false, error: e.message };
+    }
+}
+
+export async function updateBlogPost(id: number, data: any) {
+    try {
+        await prisma.blogPost.update({ where: { id }, data });
+        revalidatePath('/cms/blog');
+        revalidatePath('/blog');
+        return { success: true };
+    } catch (e: any) {
+        console.error(e);
+        return { success: false, error: e.message };
+    }
+}
+
+export async function deleteBlogPost(id: number) {
+    try {
+        await prisma.blogPost.delete({ where: { id } });
+        revalidatePath('/cms/blog');
+        revalidatePath('/blog');
+        return { success: true };
+    } catch (e: any) {
+        console.error(e);
+        return { success: false, error: e.message };
+    }
+}
