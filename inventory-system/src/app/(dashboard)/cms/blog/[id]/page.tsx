@@ -1,11 +1,13 @@
 import { getBlogPost } from "@/app/actions";
 import BlogEditor from "./BlogEditor";
 
-export default async function EditBlogPostPage({ params }: { params: { id: string } }) {
+export default async function EditBlogPostPage({ params }: { params: Promise<{ id: string }> }) {
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
     let post = null;
     
-    if (params.id !== "new") {
-        post = await getBlogPost(parseInt(params.id));
+    if (id !== "new") {
+        post = await getBlogPost(parseInt(id));
         if (!post) {
             return <div>Статья не найдена</div>;
         }
