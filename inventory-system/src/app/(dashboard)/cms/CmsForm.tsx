@@ -284,28 +284,14 @@ export default function CmsForm({ initialData, initialCategories }: { initialDat
             </div>
 
             {/* БЛОГ */}
-            <div className="space-y-4 bg-white p-6 rounded-lg shadow-sm border">
-                <h2 className="text-xl font-semibold border-b pb-2">Блог</h2>
-                <div className="grid grid-cols-1 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Текст (Русский)</label>
-                        <textarea
-                            rows={4}
-                            className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
-                            value={form.blog_ru}
-                            onChange={(e) => setForm({ ...form, blog_ru: e.target.value })}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Текст (Қазақша)</label>
-                        <textarea
-                            rows={4}
-                            className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
-                            value={form.blog_kz}
-                            onChange={(e) => setForm({ ...form, blog_kz: e.target.value })}
-                        />
-                    </div>
+            <div className="space-y-4 bg-white p-6 rounded-lg shadow-sm border flex items-center justify-between">
+                <div>
+                    <h2 className="text-xl font-semibold">Блог</h2>
+                    <p className="text-sm text-gray-500 mt-1">Теперь у блога есть свой расширенный редактор со статьями и картинками.</p>
                 </div>
+                <a href="/cms/blog" className="px-5 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition">
+                    Перейти в Блог
+                </a>
             </div>
             {/* КОНТАКТЫ */}
             <div className="space-y-4 bg-white p-6 rounded-lg shadow-sm border">
