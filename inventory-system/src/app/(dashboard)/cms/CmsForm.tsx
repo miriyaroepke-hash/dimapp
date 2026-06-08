@@ -46,6 +46,14 @@ export default function CmsForm({ initialData, initialCategories }: { initialDat
         privacy_kz: initialData?.privacy_kz || "",
         oferta_ru: initialData?.oferta_ru || "",
         oferta_kz: initialData?.oferta_kz || "",
+        returns_ru: initialData?.returns_ru || "",
+        returns_kz: initialData?.returns_kz || "",
+        terms_ru: initialData?.terms_ru || "",
+        terms_kz: initialData?.terms_kz || "",
+        size_guide_ru: initialData?.size_guide_ru || "",
+        size_guide_kz: initialData?.size_guide_kz || "",
+        how_to_order_ru: initialData?.how_to_order_ru || "",
+        how_to_order_kz: initialData?.how_to_order_kz || "",
     });
     const [categoryContents, setCategoryContents] = useState<Record<string, any>>(initialCategories || {});
     const [uploadingField, setUploadingField] = useState<string | null>(null);
@@ -342,6 +350,10 @@ export default function CmsForm({ initialData, initialCategories }: { initialDat
                         { id: 'about', label: 'О нас' },
                         { id: 'privacy', label: 'Политика конфиденциальности' },
                         { id: 'oferta', label: 'Публичная оферта' },
+                        { id: 'returns', label: 'Возврат' },
+                        { id: 'terms', label: 'Условия доставки' },
+                        { id: 'size_guide', label: 'Как выбрать размер' },
+                        { id: 'how_to_order', label: 'Как оформить заказ' },
                     ].map(page => (
                         <div key={page.id} className="border p-4 rounded-lg bg-gray-50/50">
                             <div className="flex justify-between items-center mb-3">

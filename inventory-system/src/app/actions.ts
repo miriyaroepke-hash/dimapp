@@ -1098,6 +1098,10 @@ export async function updateSiteContent(data: any) {
                     privacy_kz: data.privacy_kz,
                     oferta_ru: data.oferta_ru,
                     oferta_kz: data.oferta_kz,
+                    size_guide_ru: data.size_guide_ru,
+                    size_guide_kz: data.size_guide_kz,
+                    how_to_order_ru: data.how_to_order_ru,
+                    how_to_order_kz: data.how_to_order_kz,
                 }
             });
         } else {
@@ -1126,6 +1130,10 @@ export async function updateSiteContent(data: any) {
                     privacy_kz: data.privacy_kz,
                     oferta_ru: data.oferta_ru,
                     oferta_kz: data.oferta_kz,
+                    size_guide_ru: data.size_guide_ru,
+                    size_guide_kz: data.size_guide_kz,
+                    how_to_order_ru: data.how_to_order_ru,
+                    how_to_order_kz: data.how_to_order_kz,
                 }
             });
         }

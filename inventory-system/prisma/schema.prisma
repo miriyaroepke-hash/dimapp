@@ -109,6 +109,10 @@ model SiteContent {
   privacy_kz  String?  @db.Text
   oferta_ru   String?  @db.Text
   oferta_kz   String?  @db.Text
+  size_guide_ru String? @db.Text
+  size_guide_kz String? @db.Text
+  how_to_order_ru String? @db.Text
+  how_to_order_kz String? @db.Text
   updatedAt   DateTime @default(now()) @updatedAt
 }
 
