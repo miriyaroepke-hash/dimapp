@@ -99,6 +99,16 @@ model SiteContent {
   blog_kz     String?  @db.Text
   terms_ru    String?  @db.Text
   terms_kz    String?  @db.Text
+  faq_ru      String?  @db.Text
+  faq_kz      String?  @db.Text
+  club_ru     String?  @db.Text
+  club_kz     String?  @db.Text
+  about_ru    String?  @db.Text
+  about_kz    String?  @db.Text
+  privacy_ru  String?  @db.Text
+  privacy_kz  String?  @db.Text
+  oferta_ru   String?  @db.Text
+  oferta_kz   String?  @db.Text
   updatedAt   DateTime @default(now()) @updatedAt
 }
 

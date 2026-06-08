@@ -92,7 +92,7 @@ export default function OrdersClient({ orders, products }: { orders: Order[], pr
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-white rounded-lg shadow overflow-x-auto">
                 <table className="w-full text-sm text-left">
                     <thead className="bg-gray-50 uppercase text-xs">
                         <tr>

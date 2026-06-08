@@ -36,6 +36,16 @@ export default function CmsForm({ initialData, initialCategories }: { initialDat
         blog_kz: initialData?.blog_kz || "",
         contacts_ru: initialData?.contacts_ru || "",
         contacts_kz: initialData?.contacts_kz || "",
+        faq_ru: initialData?.faq_ru || "",
+        faq_kz: initialData?.faq_kz || "",
+        club_ru: initialData?.club_ru || "",
+        club_kz: initialData?.club_kz || "",
+        about_ru: initialData?.about_ru || "",
+        about_kz: initialData?.about_kz || "",
+        privacy_ru: initialData?.privacy_ru || "",
+        privacy_kz: initialData?.privacy_kz || "",
+        oferta_ru: initialData?.oferta_ru || "",
+        oferta_kz: initialData?.oferta_kz || "",
     });
     const [categoryContents, setCategoryContents] = useState<Record<string, any>>(initialCategories || {});
     const [uploadingField, setUploadingField] = useState<string | null>(null);
@@ -50,7 +60,7 @@ export default function CmsForm({ initialData, initialCategories }: { initialDat
         finally { setIsLoading(false); }
     };
 
-    const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string, isCat = false, catId = "") => {
+    const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string, isCat = false, catId = "", isTextAppend = false) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -83,6 +93,9 @@ export default function CmsForm({ initialData, initialCategories }: { initialDat
 
             if (isCat) {
                 setCategoryContents(prev => ({ ...prev, [catId]: { ...prev[catId], image: data.secure_url } }));
+            } else if (isTextAppend) {
+                setForm(prev => ({ ...prev, [fieldName]: prev[fieldName as keyof typeof prev] + `\n![описание](${data.secure_url})\n` }));
+                alert("Картинка добавлена в конец текста. Вы можете вырезать ее и вставить в нужное место.");
             } else {
                 setForm(prev => ({ ...prev, [fieldName]: data.secure_url }));
             }
@@ -315,6 +328,57 @@ export default function CmsForm({ initialData, initialCategories }: { initialDat
                             onChange={(e) => setForm({ ...form, contacts_kz: e.target.value })}
                         />
                     </div>
+                </div>
+            </div>
+
+            {/* НОВЫЕ СТРАНИЦЫ (MARKDOWN) */}
+            <div className="space-y-4 bg-white p-6 rounded-lg shadow-sm border">
+                <h2 className="text-xl font-semibold border-b pb-2">Информационные страницы (Поддержка Markdown)</h2>
+                <p className="text-sm text-gray-500 mb-4">Вы можете использовать жирный текст `**текст**`, заголовки `# Заголовок` и вставлять ссылки/картинки.</p>
+                <div className="space-y-8">
+                    {[
+                        { id: 'faq', label: 'Часто задаваемые вопросы (FAQ)' },
+                        { id: 'club', label: 'Клуб Dimmiani' },
+                        { id: 'about', label: 'О нас' },
+                        { id: 'privacy', label: 'Политика конфиденциальности' },
+                        { id: 'oferta', label: 'Публичная оферта' },
+                    ].map(page => (
+                        <div key={page.id} className="border p-4 rounded-lg bg-gray-50/50">
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-semibold text-lg">{page.label}</h3>
+                                <div className="flex items-center gap-2">
+                                    <label className="relative flex items-center px-3 py-1 bg-blue-50 text-blue-700 font-medium border border-blue-200 rounded hover:bg-blue-100 cursor-pointer transition text-xs">
+                                        {uploadingField === `${page.id}_ru` ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Загрузка...</> : "Картинка (RU)"}
+                                        <input type="file" accept="image/*" className="hidden" onChange={e => handleMediaUpload(e, `${page.id}_ru`, false, "", true)} disabled={uploadingField !== null} />
+                                    </label>
+                                    <label className="relative flex items-center px-3 py-1 bg-blue-50 text-blue-700 font-medium border border-blue-200 rounded hover:bg-blue-100 cursor-pointer transition text-xs">
+                                        {uploadingField === `${page.id}_kz` ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Загрузка...</> : "Картинка (KZ)"}
+                                        <input type="file" accept="image/*" className="hidden" onChange={e => handleMediaUpload(e, `${page.id}_kz`, false, "", true)} disabled={uploadingField !== null} />
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Текст ({page.id.toUpperCase()} RU)</label>
+                                    <textarea
+                                        rows={10}
+                                        className="w-full border p-3 rounded focus:ring-2 focus:ring-blue-500 font-mono text-sm leading-relaxed bg-white"
+                                        value={(form as any)[`${page.id}_ru`]}
+                                        onChange={(e) => setForm({ ...form, [`${page.id}_ru`]: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Текст ({page.id.toUpperCase()} KZ)</label>
+                                    <textarea
+                                        rows={10}
+                                        className="w-full border p-3 rounded focus:ring-2 focus:ring-blue-500 font-mono text-sm leading-relaxed bg-white"
+                                        value={(form as any)[`${page.id}_kz`]}
+                                        onChange={(e) => setForm({ ...form, [`${page.id}_kz`]: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
 

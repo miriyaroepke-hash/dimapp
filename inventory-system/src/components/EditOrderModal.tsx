@@ -210,11 +210,11 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
                                 <input className="w-full border p-2 rounded mb-2" placeholder="Улица, дом, квартира" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} />
 
                                 <label className="block text-sm font-medium">ИЛИ Адрес (по частям)</label>
-                                <div className="grid grid-cols-2 gap-2 mb-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
                                     <input className="border p-2 rounded" placeholder="Улица" value={form.street} onChange={e => setForm({ ...form, street: e.target.value })} />
                                     <input className="border p-2 rounded" placeholder="Дом" value={form.house} onChange={e => setForm({ ...form, house: e.target.value })} />
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 mb-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
                                     <input className="border p-2 rounded" placeholder="Квартира" value={form.apartment} onChange={e => setForm({ ...form, apartment: e.target.value })} />
                                 </div>
 
@@ -246,7 +246,7 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
                                 <label className="block text-sm font-medium mt-2">Оплата</label>
                                 <input className="w-full border p-2 rounded" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })} />
 
-                                <div className="grid grid-cols-2 gap-2 mt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-4">
                                     <div>
                                         <label className="block text-sm font-medium">Статус оплаты</label>
                                         <select className="w-full border p-2 rounded mt-1 bg-white" value={form.paymentStatus} onChange={e => setForm({ ...form, paymentStatus: e.target.value })}>

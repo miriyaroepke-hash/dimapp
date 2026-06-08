@@ -1088,6 +1088,16 @@ export async function updateSiteContent(data: any) {
                     blog_kz: data.blog_kz,
                     contacts_ru: data.contacts_ru,
                     contacts_kz: data.contacts_kz,
+                    faq_ru: data.faq_ru,
+                    faq_kz: data.faq_kz,
+                    club_ru: data.club_ru,
+                    club_kz: data.club_kz,
+                    about_ru: data.about_ru,
+                    about_kz: data.about_kz,
+                    privacy_ru: data.privacy_ru,
+                    privacy_kz: data.privacy_kz,
+                    oferta_ru: data.oferta_ru,
+                    oferta_kz: data.oferta_kz,
                 }
             });
         } else {
@@ -1106,6 +1116,16 @@ export async function updateSiteContent(data: any) {
                     blog_kz: data.blog_kz,
                     contacts_ru: data.contacts_ru,
                     contacts_kz: data.contacts_kz,
+                    faq_ru: data.faq_ru,
+                    faq_kz: data.faq_kz,
+                    club_ru: data.club_ru,
+                    club_kz: data.club_kz,
+                    about_ru: data.about_ru,
+                    about_kz: data.about_kz,
+                    privacy_ru: data.privacy_ru,
+                    privacy_kz: data.privacy_kz,
+                    oferta_ru: data.oferta_ru,
+                    oferta_kz: data.oferta_kz,
                 }
             });
         }
