@@ -24,6 +24,19 @@ export default async function OrdersPage() {
         },
     });
 
+    const products = await prisma.product.findMany({
+        where: { quantity: { gt: 0 } },
+        select: {
+            id: true,
+            name: true,
+            sku: true,
+            size: true,
+            price: true,
+            quantity: true,
+            image: true,
+        }
+    });
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -31,7 +44,7 @@ export default async function OrdersPage() {
                 <CreateOrderClient />
             </div>
 
-            <OrdersClient orders={orders} products={[]} />
+            <OrdersClient orders={orders} products={products} />
         </div>
     );
 }
