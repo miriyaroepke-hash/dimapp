@@ -525,6 +525,9 @@ export async function updateOrder(orderId: number, data: any) {
         }, { maxWait: 15000, timeout: 30000 });
 
         revalidatePath("/orders");
+        revalidatePath("/daily-plan");
+        revalidatePath("/");
+        
         return { success: true };
     } catch (e: any) {
         console.error("Update Order Error:", e);
@@ -594,6 +597,19 @@ export async function addItemToOrder(orderId: number, productDetails: any) {
         }, { maxWait: 15000, timeout: 30000 });
 
         revalidatePath("/orders");
+        revalidatePath("/daily-plan");
+        revalidatePath("/");
+
+        try {
+            const order = await prisma.order.findUnique({ where: { id: orderId } });
+            if (order) {
+                const { sendTelegramMessage } = await import("@/lib/telegram");
+                await sendTelegramMessage(`✏️ ДОЗАКАЗ ТОВАРА\nЗаказ: ${order.orderNumber}\nДобавлен: ${productDetails.name} (${productDetails.size || "-"}): ${productDetails.quantity} шт.\nНовая сумма заказа: ${order.totalAmount.toLocaleString("ru-RU")} ₸`);
+            }
+        } catch (err) {
+            console.error("Telegram notification failed:", err);
+        }
+
         return { success: true };
     } catch (e: any) {
         console.error("Add Item Error:", e);
@@ -645,6 +661,19 @@ export async function removeItemFromOrder(orderId: number, itemId: number) {
         }, { maxWait: 15000, timeout: 30000 });
 
         revalidatePath("/orders");
+        revalidatePath("/daily-plan");
+        revalidatePath("/");
+
+        try {
+            const order = await prisma.order.findUnique({ where: { id: orderId } });
+            if (order) {
+                const { sendTelegramMessage } = await import("@/lib/telegram");
+                await sendTelegramMessage(`✏️ УДАЛЕНИЕ ТОВАРА\nЗаказ: ${order.orderNumber}\nУдален товар из заказа.\nНовая сумма заказа: ${order.totalAmount.toLocaleString("ru-RU")} ₸`);
+            }
+        } catch (err) {
+            console.error("Telegram notification failed:", err);
+        }
+
         return { success: true };
     } catch (e: any) {
         console.error("Remove Item Error:", e);
