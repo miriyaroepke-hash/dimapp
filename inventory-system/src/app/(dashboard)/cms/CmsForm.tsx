@@ -46,10 +46,7 @@ export default function CmsForm({ initialData, initialCategories }: { initialDat
         privacy_kz: initialData?.privacy_kz || "",
         oferta_ru: initialData?.oferta_ru || "",
         oferta_kz: initialData?.oferta_kz || "",
-        returns_ru: initialData?.returns_ru || "",
-        returns_kz: initialData?.returns_kz || "",
-        terms_ru: initialData?.terms_ru || "",
-        terms_kz: initialData?.terms_kz || "",
+
         size_guide_ru: initialData?.size_guide_ru || "",
         size_guide_kz: initialData?.size_guide_kz || "",
         how_to_order_ru: initialData?.how_to_order_ru || "",
