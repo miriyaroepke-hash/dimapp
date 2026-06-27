@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Package, ShoppingCart, Settings, LogOut, Menu, X, Monitor, Store, Globe } from "lucide-react";
 import { useState } from "react";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import clsx from "clsx";
 
 const navItems = [
@@ -17,16 +17,23 @@ const navItems = [
     { name: "Заказы", href: "/orders", icon: ShoppingCart },
     { name: "Архив", href: "/archive", icon: Package },
 
-    { name: "Пользователи", href: "/users", icon: Settings },
     { name: "Конструктор сайта", href: "/cms", icon: Monitor },
+];
+
+const adminNavItems = [
+    { name: "Отчеты", href: "/reports", icon: LayoutDashboard },
+    { name: "Пользователи", href: "/users", icon: Settings },
 ];
 
 
 export default function Sidebar() {
     const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
+    const { data: session } = useSession();
+    
+    const isAdmin = (session?.user as any)?.role === "ADMIN";
 
-    // Mobile drawer logic could be added here or just responsive blocks
+    const allNavItems = isAdmin ? [...navItems, ...adminNavItems] : navItems;
 
     return (
         <>
@@ -49,7 +56,7 @@ export default function Sidebar() {
                     </div>
 
                     <nav className="flex-1 px-4 py-6 space-y-2">
-                        {navItems.map((item) => {
+                        {allNavItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = pathname === item.href;
                             return (

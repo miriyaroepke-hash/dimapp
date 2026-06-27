@@ -68,6 +68,19 @@ export default async function UsersPage() {
         }
     }
 
+    async function updateUserRole(formData: FormData) {
+        "use server";
+        const userId = Number(formData.get("userId"));
+        const role = formData.get("role") as string;
+        if (!userId || !role) return;
+        try {
+            await prisma.user.update({ where: { id: userId }, data: { role } });
+            revalidatePath("/users");
+        } catch (e) {
+            console.error("Failed to update user role", e);
+        }
+    }
+
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold">Пользователи</h1>
@@ -142,10 +155,20 @@ export default async function UsersPage() {
                                 <td className="px-6 py-4 text-gray-500">{user.username}</td>
                                 <td className="px-6 py-4 text-gray-500">{user.email || "-"}</td>
                                 <td className="px-6 py-4">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${user.role === "ADMIN" ? "bg-purple-100 text-purple-800" : "bg-gray-100 text-gray-800"
-                                        }`}>
-                                        {user.role}
-                                    </span>
+                                    <form action={updateUserRole} className="flex gap-2">
+                                        <input type="hidden" name="userId" value={user.id} />
+                                        <select 
+                                            name="role" 
+                                            defaultValue={user.role}
+                                            className={`px-2 py-1 rounded text-xs font-semibold border ${user.role === "ADMIN" ? "bg-purple-50 border-purple-200 text-purple-800" : "bg-gray-50 border-gray-200 text-gray-800"}`}
+                                        >
+                                            <option value="USER">USER</option>
+                                            <option value="ADMIN">ADMIN</option>
+                                        </select>
+                                        <button type="submit" className="text-blue-600 hover:text-blue-800 text-xs font-medium">
+                                            Изменить
+                                        </button>
+                                    </form>
                                 </td>
                                 <td className="px-6 py-4">
                                     <form action={resetPassword} className="flex gap-2">
