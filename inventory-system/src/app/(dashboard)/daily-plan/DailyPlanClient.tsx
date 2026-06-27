@@ -72,7 +72,10 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
         if (filters.daysInWork) {
             result = result.filter(o => {
                 const days = differenceInDays(new Date(), new Date(o.createdAt));
-                return days.toString() === filters.daysInWork;
+                if (filters.daysInWork === "0-3") return days >= 0 && days <= 3;
+                if (filters.daysInWork === "4-6") return days >= 4 && days <= 6;
+                if (filters.daysInWork === "7+") return days >= 7;
+                return true;
             });
         }
         if (filters.client) {
@@ -332,9 +335,17 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
                                     <input type="text" placeholder="Номер..." className="w-full text-xs p-1 border rounded font-normal"
                                         value={filters.orderNumber} onChange={(e) => setFilters(f => ({ ...f, orderNumber: e.target.value }))} />
                                 </th>
-                                <th className="px-2 py-2">
-                                    <input type="text" placeholder="Дней..." className="w-full text-xs p-1 border rounded font-normal text-center"
-                                        value={filters.daysInWork} onChange={(e) => setFilters(f => ({ ...f, daysInWork: e.target.value }))} />
+                                <th className="px-1 py-2">
+                                    <select 
+                                        className="w-full text-xs p-1 border rounded font-normal bg-white"
+                                        value={filters.daysInWork} 
+                                        onChange={(e) => setFilters(f => ({ ...f, daysInWork: e.target.value }))}
+                                    >
+                                        <option value="">Все</option>
+                                        <option value="0-3">0-3 дн.</option>
+                                        <option value="4-6">4-6 дн.</option>
+                                        <option value="7+">&gt; 6 дн.</option>
+                                    </select>
                                 </th>
                                 <th className="px-2 py-2">
                                     <input type="text" placeholder="Имя/Тел..." className="w-full text-xs p-1 border rounded font-normal"
