@@ -8,6 +8,16 @@ export async function GET(req: NextRequest) {
         return NextResponse.json([]);
     }
 
+    const terms = q.split(' ').filter(t => t.trim().length > 0);
+
+    const searchConditions = terms.map(term => ({
+        OR: [
+            { name: { contains: term, mode: "insensitive" as const } },
+            { sku: { contains: term } },
+            { size: { contains: term, mode: "insensitive" as const } }
+        ]
+    }));
+
     const products = await prisma.product.findMany({
         where: {
             AND: [
@@ -17,12 +27,7 @@ export async function GET(req: NextRequest) {
                         { quantityShowroom: { gt: 0 } }
                     ]
                 },
-                {
-                    OR: [
-                        { name: { contains: q, mode: "insensitive" } },
-                        { sku: { contains: q } }
-                    ]
-                }
+                ...searchConditions
             ]
         },
         select: {

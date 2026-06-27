@@ -35,12 +35,15 @@ export default function POSInterface({ initialProducts }: { initialProducts: Pro
             setSearchResults([]);
             return;
         }
-        const lower = query.toLowerCase();
-        const results = initialProducts.filter(p =>
-            p.name.toLowerCase().includes(lower) ||
-            p.sku.toLowerCase().includes(lower)
-        );
-        setSearchResults(results.slice(0, 5));
+        const terms = query.toLowerCase().split(' ').filter(t => t.trim().length > 0);
+        const results = initialProducts.filter(p => {
+            return terms.every(term => 
+                p.name.toLowerCase().includes(term) ||
+                p.sku.toLowerCase().includes(term) ||
+                (p.size && p.size.toLowerCase().includes(term))
+            );
+        });
+        setSearchResults(results.slice(0, 10)); // Increase limit a bit since filtering is stricter
     }, [query, initialProducts]);
 
     const addToCart = (product: Product) => {
