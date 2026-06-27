@@ -43,6 +43,7 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
     const [filters, setFilters] = useState({
         deliveryMethod: "",
         orderNumber: "",
+        daysInWork: "",
         client: "",
         address: "",
         items: "",
@@ -67,6 +68,12 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
         }
         if (filters.orderNumber) {
             result = result.filter(o => o.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase()));
+        }
+        if (filters.daysInWork) {
+            result = result.filter(o => {
+                const days = differenceInDays(new Date(), new Date(o.createdAt));
+                return days.toString() === filters.daysInWork;
+            });
         }
         if (filters.client) {
             const term = filters.client.toLowerCase();
@@ -120,6 +127,9 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
                 } else if (sortConfig.key === "payment") {
                     aVal = a.paymentMethod;
                     bVal = b.paymentMethod;
+                } else if (sortConfig.key === "daysInWork") {
+                    aVal = differenceInDays(new Date(), new Date(a.createdAt));
+                    bVal = differenceInDays(new Date(), new Date(b.createdAt));
                 }
 
                 if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
@@ -294,6 +304,9 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
                                 <th scope="col" className="px-6 py-2 cursor-pointer hover:bg-gray-200" onClick={() => handleSort("orderNumber")}>
                                     Заказ / Дата {sortConfig?.key === "orderNumber" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
                                 </th>
+                                <th scope="col" className="px-6 py-2 cursor-pointer hover:bg-gray-200" onClick={() => handleSort("daysInWork")}>
+                                    Дней в работе {sortConfig?.key === "daysInWork" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
+                                </th>
                                 <th scope="col" className="px-6 py-2 cursor-pointer hover:bg-gray-200" onClick={() => handleSort("client")}>
                                     Клиент {sortConfig?.key === "client" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
                                 </th>
@@ -320,6 +333,10 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
                                         value={filters.orderNumber} onChange={(e) => setFilters(f => ({ ...f, orderNumber: e.target.value }))} />
                                 </th>
                                 <th className="px-2 py-2">
+                                    <input type="text" placeholder="Дней..." className="w-full text-xs p-1 border rounded font-normal text-center"
+                                        value={filters.daysInWork} onChange={(e) => setFilters(f => ({ ...f, daysInWork: e.target.value }))} />
+                                </th>
+                                <th className="px-2 py-2">
                                     <input type="text" placeholder="Имя/Тел..." className="w-full text-xs p-1 border rounded font-normal"
                                         value={filters.client} onChange={(e) => setFilters(f => ({ ...f, client: e.target.value }))} />
                                 </th>
@@ -344,7 +361,7 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
                         <tbody>
                             {processedOrders.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                                    <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                                         Нет активных заказов на сегодня, удовлетворяющих фильтрам
                                     </td>
                                 </tr>
@@ -377,9 +394,11 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
                                         <td className="px-6 py-4">
                                             <div className="font-bold">{order.orderNumber}</div>
                                             <div className="text-xs text-gray-500">{format(new Date(order.createdAt), "dd.MM.yyyy HH:mm")}</div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
                                             {(() => {
                                                 const days = differenceInDays(new Date(), new Date(order.createdAt));
-                                                return <div className={`text-xs font-semibold mt-1 ${days > 6 ? 'text-red-500' : 'text-gray-500'}`}>{days} дн.</div>;
+                                                return <div className={`text-sm font-bold ${days > 6 ? 'text-red-600 bg-red-100' : 'text-gray-700 bg-gray-100'} px-2 py-1 rounded-full inline-block`}>{days} дн.</div>;
                                             })()}
                                         </td>
                                         <td className="px-6 py-4">
