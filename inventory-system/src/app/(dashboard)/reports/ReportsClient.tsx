@@ -39,8 +39,8 @@ export default function ReportsClient({ monthlySales, topProducts, monthlyProduc
                             <YAxis yAxisId="left" />
                             <YAxis yAxisId="right" orientation="right" />
                             <Tooltip formatter={(value: any, name: any) => [
-                                name === "revenue" ? `₸${Number(value).toLocaleString()}` : value,
-                                name === "revenue" ? "Сумма продаж" : "Кол-во заказов"
+                                name === "Выручка (₸)" ? `₸${Number(value).toLocaleString()}` : value,
+                                name
                             ]} />
                             <Legend />
                             <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#8884d8" name="Выручка (₸)" />
