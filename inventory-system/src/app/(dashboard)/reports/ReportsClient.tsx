@@ -15,7 +15,7 @@ interface TopProductData {
 
 interface MonthlyProductData {
     month: string;
-    productCount: number;
+    unitsAdded: number;
     totalValue: number;
 }
 
@@ -79,10 +79,10 @@ export default function ReportsClient({ monthlySales, topProducts, monthlyProduc
                                 <YAxis yAxisId="right" orientation="right" />
                                 <Tooltip formatter={(value: any, name: any) => [
                                     name === "totalValue" ? `₸${Number(value).toLocaleString()}` : value,
-                                    name === "totalValue" ? "Общая стоимость" : "Уникальных позиций"
+                                    name === "totalValue" ? "Сумма стоимости (₸)" : "Добавлено единиц (шт)"
                                 ]} />
                                 <Legend />
-                                <Bar yAxisId="left" dataKey="productCount" fill="#8884d8" name="Добавлено позиций" />
+                                <Bar yAxisId="left" dataKey="unitsAdded" fill="#8884d8" name="Добавлено позиций" />
                                 <Bar yAxisId="right" dataKey="totalValue" fill="#82ca9d" name="Сумма стоимости" />
                             </BarChart>
                         </ResponsiveContainer>

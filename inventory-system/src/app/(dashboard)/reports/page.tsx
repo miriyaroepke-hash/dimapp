@@ -41,18 +41,24 @@ export default async function ReportsPage() {
     });
     const topProducts = Object.values(productSalesMap).sort((a, b) => b.quantity - a.quantity).slice(0, 20);
 
-    // 3. Products added by month (Výrabotka)
-    const products = await prisma.product.findMany({
-        select: { createdAt: true, price: true, quantity: true, quantityShowroom: true }
+    // 3. Products added by month (Výrabotka) - via Transactions
+    const inboundTransactions = await prisma.transaction.findMany({
+        where: {
+            OR: [
+                { type: 'IN' },
+                { type: 'ADJUSTMENT', quantity: { gt: 0 } }
+            ]
+        },
+        include: { product: true }
     });
 
-    const monthlyProductsMap: Record<string, { month: string, productCount: number, totalValue: number }> = {};
-    products.forEach(p => {
-        const d = new Date(p.createdAt);
+    const monthlyProductsMap: Record<string, { month: string, unitsAdded: number, totalValue: number }> = {};
+    inboundTransactions.forEach(tx => {
+        const d = new Date(tx.date);
         const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        if (!monthlyProductsMap[month]) monthlyProductsMap[month] = { month, productCount: 0, totalValue: 0 };
-        monthlyProductsMap[month].productCount += 1;
-        monthlyProductsMap[month].totalValue += (p.price * ((p.quantity || 0) + (p.quantityShowroom || 0)));
+        if (!monthlyProductsMap[month]) monthlyProductsMap[month] = { month, unitsAdded: 0, totalValue: 0 };
+        monthlyProductsMap[month].unitsAdded += tx.quantity;
+        monthlyProductsMap[month].totalValue += (tx.product.price * tx.quantity);
     });
     const monthlyProducts = Object.values(monthlyProductsMap).sort((a, b) => a.month.localeCompare(b.month));
 
