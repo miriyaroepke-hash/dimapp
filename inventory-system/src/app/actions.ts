@@ -123,7 +123,8 @@ export async function createOrder(
     deliveryMethod: string = "PICKUP",
     customer?: CustomerDetails,
     payment?: PaymentDetails,
-    source: string = "POS"
+    source: string = "POS",
+    comment?: string
 ) {
     if (cart.length === 0) return { error: "Корзина пуста" };
 
@@ -183,6 +184,7 @@ export async function createOrder(
                 postalCode: customer?.postalCode,
                 paymentMethod: payment?.method || "CASH",
                 codAmount: payment?.codAmount,
+                comment,
                 items: {
                     create: orderItemsCreatePayload
                 }
@@ -257,7 +259,7 @@ export async function createOrder(
 Клиент: ${clientInfo || "Не указан"}
 Доставка: ${deliveryMethod}${fullAddress ? ` \nКуда: ${fullAddress}` : ""}
 Оплата: ${payment?.method || "CASH"}
-
+${comment ? `Комментарий: ${comment}\n` : ""}
 Корзина:
 ${telegramItems.join("\n")}
 

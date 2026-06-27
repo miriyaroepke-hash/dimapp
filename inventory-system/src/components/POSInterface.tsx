@@ -27,6 +27,7 @@ export default function POSInterface({ initialProducts }: { initialProducts: Pro
     const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
     const [deliveryMethod, setDeliveryMethod] = useState("PICKUP");
+    const [comment, setComment] = useState("");
 
     // Search logic
     useEffect(() => {
@@ -126,12 +127,13 @@ export default function POSInterface({ initialProducts }: { initialProducts: Pro
                 isCustom: !!(item as any).isCustom
             }));
 
-            // match signature: cart, deliveryMethod, customer?, payment?, source?
-            const result = await createOrder(payload, deliveryMethod, undefined, undefined, "POS");
+            // match signature: cart, deliveryMethod, customer?, payment?, source?, comment?
+            const result = await createOrder(payload, deliveryMethod, undefined, undefined, "POS", comment);
 
             if (result.success) {
                 alert("Заказ успешно создан!");
                 setCart([]);
+                setComment("");
             } else {
                 alert("Ошибка: " + result.error);
             }
@@ -237,6 +239,14 @@ export default function POSInterface({ initialProducts }: { initialProducts: Pro
                                 <option value="POST">Почта</option>
                                 <option value="YANDEX">Яндекс</option>
                             </select>
+                        </div>
+                        <div className="col-span-2">
+                            <input
+                                value={comment}
+                                onChange={e => setComment(e.target.value)}
+                                placeholder="Комментарий к заказу (необязательно)..."
+                                className="w-full border rounded p-2 text-sm"
+                            />
                         </div>
                         <button onClick={handleCheckout} className="flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-bold col-span-2">
                             <Banknote /> Оплатить ({deliveryMethod === 'PICKUP' ? 'Наличные/Карта' : 'Создать Заказ'})

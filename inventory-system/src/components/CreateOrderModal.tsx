@@ -67,6 +67,7 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
     // Payment State
     const [paymentMethod, setPaymentMethod] = useState("");
     const [codAmount, setCodAmount] = useState("");
+    const [comment, setComment] = useState("");
 
     // Fetch products from API as user types (debounced)
     useEffect(() => {
@@ -226,7 +227,7 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
 
         const source = isQuickSale ? "SHOWROOM_POS" : "POS";
 
-        const result = await createOrder(payload, deliveryMethod, customer, payment, source);
+        const result = await createOrder(payload, deliveryMethod, customer, payment, source, comment);
 
         if (result.success) {
             onClose();
@@ -574,6 +575,17 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
                                         </p>
                                     </div>
                                 )}
+                            </div>
+                            
+                            {/* Comment */}
+                            <div className="space-y-3 bg-gray-100 p-3 rounded">
+                                <h3 className="font-bold text-sm text-gray-700">Комментарий к заказу</h3>
+                                <textarea
+                                    placeholder="Оставьте комментарий (необязательно)..."
+                                    className="w-full p-2 border rounded text-sm min-h-[60px]"
+                                    value={comment}
+                                    onChange={e => setComment(e.target.value)}
+                                />
                             </div>
                         </div>
 
