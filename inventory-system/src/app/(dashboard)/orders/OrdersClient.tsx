@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { Loader2, Edit, Check, X, Truck } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { updateOrder, updateOrderStatus, createCdekOrder, updateCdekStatus } from "@/app/actions";
 import EditOrderModal from "@/components/EditOrderModal";
 
@@ -35,12 +36,20 @@ interface Order {
     history: any[];
 }
 
-export default function OrdersClient({ orders, products }: { orders: Order[], products: Product[] }) {
-    const [selectedIds, setSelectedIds] = useState<number[]>([]);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+interface Props {
+    orders: Order[];
+    products: Product[];
+    total: number;
+    currentPage: number;
+    totalPages: number;
+}
 
-    // Editing State Removed from here (moved to modal)
+export default function OrdersClient({ orders, products, total, currentPage, totalPages }: Props) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
+    const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
     const toggleSelect = (id: number) => {
         setSelectedIds(prev =>
@@ -72,100 +81,153 @@ export default function OrdersClient({ orders, products }: { orders: Order[], pr
         else if (res.message) alert(res.message);
     };
 
-    const filteredOrders = orders.filter(o =>
-        o.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        o.clientName?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        updateParams({ q: searchTerm, page: "1" });
+    };
+
+    const handlePageChange = (page: number) => {
+        updateParams({ page: page.toString() });
+    };
+
+    const updateParams = (updates: Record<string, string>) => {
+        const params = new URLSearchParams(searchParams.toString());
+        Object.entries(updates).forEach(([key, value]) => {
+            if (value) params.set(key, value);
+            else params.delete(key);
+        });
+        router.push(`/orders?${params.toString()}`);
+    };
 
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow">
-                <input
-                    type="text"
-                    placeholder="Поиск заказа..."
-                    className="border px-4 py-2 rounded"
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                />
-                <div className="text-sm text-gray-500">
-                    Найдено: {filteredOrders.length}
+                <form onSubmit={handleSearch} className="flex gap-2 w-full flex-wrap sm:flex-nowrap items-center">
+                    <input
+                        type="text"
+                        placeholder="Поиск заказа (номер, имя, телефон)..."
+                        className="border px-4 py-2 rounded flex-1 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
+                    <button type="submit" className="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 text-sm font-medium">
+                        Найти
+                    </button>
+                </form>
+                <div className="text-sm text-gray-500 whitespace-nowrap ml-4">
+                    Всего активных: {total}
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 uppercase text-xs">
-                        <tr>
-                            <th className="p-4 w-4">
-                                <input type="checkbox" onChange={toggleSelectAll} checked={selectedIds.length === orders.length && orders.length > 0} />
-                            </th>
-                            <th className="px-6 py-3">Номер / Дата</th>
-                            <th className="px-6 py-3">Клиент</th>
-                            <th className="px-6 py-3">Доставка / Трек</th>
-                            <th className="px-6 py-3">Сумма</th>
-                            <th className="px-6 py-3">Статус</th>
-                            <th className="px-6 py-3">Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredOrders.map(order => (
-                            <tr key={order.id} className="border-b hover:bg-gray-50">
-                                <td className="p-4">
-                                    <input type="checkbox" checked={selectedIds.includes(order.id)} onChange={() => toggleSelect(order.id)} />
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="font-bold">{order.orderNumber}</div>
-                                    <div className="text-gray-500 text-xs">{format(new Date(order.createdAt), "dd.MM.yyyy HH:mm")}</div>
-                                    {/* History Preview */}
-                                    {order.history.length > 0 && (
-                                        <div className="text-[10px] text-gray-400 mt-1">
-                                            Изм: {format(new Date(order.history[order.history.length - 1].createdAt), "HH:mm")}
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="font-medium">{order.clientName || "-"}</div>
-                                    <div className="text-xs text-gray-500">{order.clientPhone}</div>
-                                    <div className="text-xs text-gray-400 truncate max-w-[150px]">{order.city} {order.address}</div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div>{order.deliveryMethod}</div>
-                                    {order.trackingNumber ? (
-                                        <button onClick={() => handleUpdateStatus(order.id)} className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded inline-block mt-1 font-mono hover:bg-green-200">
-                                            {order.trackingNumber}
-                                        </button>
-                                    ) : (
-                                        order.deliveryMethod === 'CDEK' && (
-                                            <button onClick={() => handleCreateCdek(order.id)} className="text-xs text-blue-600 hover:underline mt-1">
-                                                + Накладная
-                                            </button>
-                                        )
-                                    )}
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="font-bold">₸ {order.totalAmount}</div>
-                                    <div className={`mt-1 inline-block px-2 py-0.5 rounded text-[10px] uppercase font-bold 
-                                        ${order.paymentStatus === 'PAID' ? 'bg-green-100 text-green-700' : 
-                                          order.paymentStatus === 'FAILED' ? 'bg-red-100 text-red-700' : 
-                                          'bg-yellow-100 text-yellow-700'}`}
-                                    >
-                                        {order.paymentStatus || "PENDING"}
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className={`px-2 py-1 rounded text-xs ${order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-gray-100'}`}>
-                                        {order.status}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 flex gap-2">
-                                    <button onClick={() => startEdit(order)} className="p-1 hover:bg-gray-200 rounded">
-                                        <Edit className="w-4 h-4 text-gray-600" />
-                                    </button>
-                                </td>
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-gray-50 uppercase text-xs">
+                            <tr>
+                                <th className="p-4 w-4">
+                                    <input type="checkbox" onChange={toggleSelectAll} checked={selectedIds.length === orders.length && orders.length > 0} />
+                                </th>
+                                <th className="px-6 py-3">Номер / Дата</th>
+                                <th className="px-6 py-3">Клиент</th>
+                                <th className="px-6 py-3">Доставка / Трек</th>
+                                <th className="px-6 py-3">Сумма</th>
+                                <th className="px-6 py-3">Статус</th>
+                                <th className="px-6 py-3">Действия</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {orders.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                                        Активные заказы не найдены
+                                    </td>
+                                </tr>
+                            ) : (
+                                orders.map(order => (
+                                    <tr key={order.id} className="border-b hover:bg-gray-50">
+                                        <td className="p-4">
+                                            <input type="checkbox" checked={selectedIds.includes(order.id)} onChange={() => toggleSelect(order.id)} />
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold">{order.orderNumber}</div>
+                                            <div className="text-gray-500 text-xs">{format(new Date(order.createdAt), "dd.MM.yyyy HH:mm")}</div>
+                                            {/* History Preview */}
+                                            {order.history.length > 0 && (
+                                                <div className="text-[10px] text-gray-400 mt-1">
+                                                    Изм: {format(new Date(order.history[order.history.length - 1].createdAt), "HH:mm")}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="font-medium">{order.clientName || "-"}</div>
+                                            <div className="text-xs text-gray-500">{order.clientPhone}</div>
+                                            <div className="text-xs text-gray-400 truncate max-w-[150px]">{order.city} {order.address}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div>{order.deliveryMethod}</div>
+                                            {order.trackingNumber ? (
+                                                <button onClick={() => handleUpdateStatus(order.id)} className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded inline-block mt-1 font-mono hover:bg-green-200">
+                                                    {order.trackingNumber}
+                                                </button>
+                                            ) : (
+                                                order.deliveryMethod === 'CDEK' && (
+                                                    <button onClick={() => handleCreateCdek(order.id)} className="text-xs text-blue-600 hover:underline mt-1">
+                                                        + Накладная
+                                                    </button>
+                                                )
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold">₸ {order.totalAmount}</div>
+                                            <div className={`mt-1 inline-block px-2 py-0.5 rounded text-[10px] uppercase font-bold 
+                                                ${order.paymentStatus === 'PAID' ? 'bg-green-100 text-green-700' : 
+                                                order.paymentStatus === 'FAILED' ? 'bg-red-100 text-red-700' : 
+                                                'bg-yellow-100 text-yellow-700'}`}
+                                            >
+                                                {order.paymentStatus || "PENDING"}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-1 rounded text-xs ${order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-gray-100'}`}>
+                                                {order.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 flex gap-2">
+                                            <button onClick={() => startEdit(order)} className="p-1 hover:bg-gray-200 rounded">
+                                                <Edit className="w-4 h-4 text-gray-600" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50">
+                        <span className="text-sm text-gray-500">
+                            Страница {currentPage} из {totalPages}
+                        </span>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                disabled={currentPage <= 1}
+                                className="px-3 py-1 border rounded bg-white disabled:opacity-50 hover:bg-gray-50 text-sm font-medium"
+                            >
+                                Назад
+                            </button>
+                            <button
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                disabled={currentPage >= totalPages}
+                                className="px-3 py-1 border rounded bg-white disabled:opacity-50 hover:bg-gray-50 text-sm font-medium"
+                            >
+                                Вперед
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {editingOrder && (
