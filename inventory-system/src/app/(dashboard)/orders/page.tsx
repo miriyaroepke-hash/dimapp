@@ -20,7 +20,7 @@ export default async function OrdersPage({
 
     const whereClause: any = {
         source: { not: "KASPI" },
-        status: { notIn: ["COMPLETED", "CANCELLED", "ARCHIVED", "RETURNED"] }
+        status: { notIn: ["ARCHIVED", "CANCELLED"] }
     };
 
     if (userRole === "COURIER") {
