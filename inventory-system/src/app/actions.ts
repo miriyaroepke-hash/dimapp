@@ -1133,6 +1133,8 @@ export async function updateSiteContent(data: any) {
                     size_guide_kz: data.size_guide_kz,
                     how_to_order_ru: data.how_to_order_ru,
                     how_to_order_kz: data.how_to_order_kz,
+                    consent_ru: data.consent_ru,
+                    consent_kz: data.consent_kz,
                 }
             });
         } else {
@@ -1165,6 +1167,8 @@ export async function updateSiteContent(data: any) {
                     size_guide_kz: data.size_guide_kz,
                     how_to_order_ru: data.how_to_order_ru,
                     how_to_order_kz: data.how_to_order_kz,
+                    consent_ru: data.consent_ru,
+                    consent_kz: data.consent_kz,
                 }
             });
         }

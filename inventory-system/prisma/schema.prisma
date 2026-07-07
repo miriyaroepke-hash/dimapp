@@ -113,6 +113,8 @@ model SiteContent {
   size_guide_kz String? @db.Text
   how_to_order_ru String? @db.Text
   how_to_order_kz String? @db.Text
+  consent_ru      String? @db.Text
+  consent_kz      String? @db.Text
   updatedAt   DateTime @default(now()) @updatedAt
 }
 

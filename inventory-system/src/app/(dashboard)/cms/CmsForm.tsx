@@ -51,6 +51,8 @@ export default function CmsForm({ initialData, initialCategories }: { initialDat
         size_guide_kz: initialData?.size_guide_kz || "",
         how_to_order_ru: initialData?.how_to_order_ru || "",
         how_to_order_kz: initialData?.how_to_order_kz || "",
+        consent_ru: initialData?.consent_ru || "",
+        consent_kz: initialData?.consent_kz || "",
     });
     const [categoryContents, setCategoryContents] = useState<Record<string, any>>(initialCategories || {});
     const [uploadingField, setUploadingField] = useState<string | null>(null);
@@ -524,6 +526,7 @@ export default function CmsForm({ initialData, initialCategories }: { initialDat
                         { id: 'about', label: 'О нас' },
                         { id: 'privacy', label: 'Политика конфиденциальности' },
                         { id: 'oferta', label: 'Публичная оферта' },
+                        { id: 'consent', label: 'Согласие на обработку персональных данных' },
                         { id: 'returns', label: 'Возврат' },
                         { id: 'terms', label: 'Условия доставки' },
                         { id: 'size_guide', label: 'Как выбрать размер' },
