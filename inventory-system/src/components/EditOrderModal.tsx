@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2, X, Plus, Search, Trash2, ShoppingBag, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { updateOrder, addItemToOrder, removeItemFromOrder } from "@/app/actions";
@@ -79,6 +79,9 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
     // --- Tab 2: Items & Stock State ---
     const [searchTerm, setSearchTerm] = useState("");
     const [isCustomMode, setIsCustomMode] = useState(false);
+    const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // Custom Item Form
     const [customName, setCustomName] = useState("");
@@ -87,13 +90,25 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
     const [customQty, setCustomQty] = useState("1");
     const [customImage, setCustomImage] = useState("");
 
-    const filteredProducts = searchTerm
-        ? products.filter(p =>
-            (p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                p.sku.includes(searchTerm)) &&
-            p.quantity > 0
-        ).slice(0, 5)
-        : [];
+    useEffect(() => {
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        if (searchTerm.length < 2) {
+            setFilteredProducts([]);
+            return;
+        }
+        setIsSearching(true);
+        searchTimerRef.current = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/products/search?q=${encodeURIComponent(searchTerm)}`);
+                const data = await res.json();
+                setFilteredProducts(data);
+            } catch {
+                setFilteredProducts([]);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300);
+    }, [searchTerm]);
 
     const handleAddItem = async (productOrCustom: any) => {
         if (!confirm(`Добавить "${productOrCustom.name}" в заказ?`)) return;
@@ -329,14 +344,20 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
                                         </div>
 
                                         {/* Dropdown */}
-                                        {searchTerm && (
+                                        {searchTerm.length >= 2 && (
                                             <div className="absolute top-full left-0 right-0 bg-white border rounded-b shadow-lg mt-1 max-h-60 overflow-y-auto z-10">
-                                                {filteredProducts.length === 0 ? (
+                                                {isSearching ? (
+                                                    <div className="p-4 text-center text-sm text-gray-500 flex items-center justify-center gap-2">
+                                                        <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
+                                                        <span>Поиск...</span>
+                                                    </div>
+                                                ) : filteredProducts.length === 0 ? (
                                                     <div className="p-3 text-center text-sm text-gray-500">Ничего не найдено</div>
                                                 ) : (
                                                     filteredProducts.map(p => (
                                                         <button
                                                             key={p.id}
+                                                            type="button"
                                                             onClick={() => handleAddItem({ ...p, quantity: 1 })}
                                                             className="w-full text-left p-2 hover:bg-purple-50 flex items-center gap-3 border-b last:border-0"
                                                         >
@@ -345,7 +366,18 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="font-medium text-sm truncate">{p.name}</div>
-                                                                <div className="text-xs text-gray-500">SKU: {p.sku} | Ост: {p.quantity}</div>
+                                                                <div className="text-xs text-gray-500 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                                                    {p.size && (
+                                                                        <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                                                            Р-р: {p.size}
+                                                                        </span>
+                                                                    )}
+                                                                    <span>SKU: {p.sku}</span>
+                                                                    <span className="text-gray-400">|</span>
+                                                                    <span>Склад: {p.quantity}</span>
+                                                                    <span className="text-gray-400">|</span>
+                                                                    <span>Шоурум: {p.quantityShowroom || 0}</span>
+                                                                </div>
                                                             </div>
                                                             <div className="font-bold text-sm">₸ {p.price}</div>
                                                         </button>
