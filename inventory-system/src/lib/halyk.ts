@@ -240,7 +240,7 @@ export async function generateHalykXml() {
     // Числовой merchantid из HALYK_CLIENT_ID (убираем буквенный префикс HMM_)
     const merchantNumericId = (process.env.HALYK_CLIENT_ID || 'Dimmiani').replace(/^[A-Z_]+/, '');
 
-    const offersXml = Object.entries(groups).filter(([sku, data]) => data.totalQty > 0 && data.price > 0).map(([sku, data]) => {
+    const offersXml = Object.entries(groups).filter(([sku, data]) => data.price > 0) // FIX: Include 0 qty to mark out of stock.map(([sku, data]) => {
         // Appending the first size or generic string to ensure uniqueness
         const sizeStr = data.sizes.length > 0 ? data.sizes[0] : "";
         const nameWithSize = sizeStr && !data.name.includes(sizeStr) ? `${data.name} ${sizeStr}` : data.name;

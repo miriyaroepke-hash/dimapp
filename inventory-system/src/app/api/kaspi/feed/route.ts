@@ -43,7 +43,7 @@ export async function GET() {
 
       products.forEach(p => {
         const sku = p.kaspiSku!.trim();
-        if (p.quantity < 0) return;
+        // if (p.quantity < 0) return; // FIX: We must include negative/zero stock to tell Kaspi they are out of stock!
         if (!groups[sku]) {
           groups[sku] = {
             name: p.name,
