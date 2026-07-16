@@ -25,6 +25,8 @@ interface EditOrderModalProps {
 export default function EditOrderModal({ order, products, onClose }: EditOrderModalProps) {
     const [activeTab, setActiveTab] = useState<"details" | "items">("details");
     const [loading, setLoading] = useState(false);
+    const [pvzList, setPvzList] = useState<any[]>([]);
+    const [isLoadingPvz, setIsLoadingPvz] = useState(false);
 
     // --- Tab 1: Order Details State ---
     const [form, setForm] = useState({
