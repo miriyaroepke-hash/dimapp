@@ -32,6 +32,7 @@ interface Order {
     paymentStatus?: string | null;
     createdAt: Date;
     trackingNumber?: string | null;
+    comment: string | null;
     items: any[];
     history: any[];
 }
@@ -162,6 +163,11 @@ export default function OrdersClient({ orders, products, total, currentPage, tot
                                             <div className="font-medium">{order.clientName || "-"}</div>
                                             <div className="text-xs text-gray-500">{order.clientPhone}</div>
                                             <div className="text-xs text-gray-400 truncate max-w-[150px]">{order.city} {order.address}</div>
+                                            {order.comment && (
+                                                <div className="mt-1 text-xs text-red-600 bg-red-50 p-1 rounded break-words max-w-[150px]">
+                                                    💬 {order.comment}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div>{order.deliveryMethod}</div>
