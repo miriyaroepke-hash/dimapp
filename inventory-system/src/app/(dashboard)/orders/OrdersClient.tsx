@@ -170,13 +170,14 @@ export default function OrdersClient({ orders, products, total, currentPage, tot
                                             )}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div>{order.deliveryMethod}</div>
+                                            <div>{order.deliveryMethod === "CDEK_PVZ" ? "CDEK_PVZ" : order.deliveryMethod}</div>
+                                            {order.deliveryMethod === "CDEK_PVZ" && order.cdekPvzCode && <div className="text-[10px] text-gray-500 font-mono">ПВЗ: {order.cdekPvzCode}</div>}
                                             {order.trackingNumber ? (
                                                 <button onClick={() => handleUpdateStatus(order.id)} className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded inline-block mt-1 font-mono hover:bg-green-200">
                                                     {order.trackingNumber}
                                                 </button>
                                             ) : (
-                                                order.deliveryMethod === 'CDEK' && (
+                                                (order.deliveryMethod === "CDEK" || order.deliveryMethod === "CDEK_PVZ") && (
                                                     <button onClick={() => handleCreateCdek(order.id)} className="text-xs text-blue-600 hover:underline mt-1">
                                                         + Накладная
                                                     </button>

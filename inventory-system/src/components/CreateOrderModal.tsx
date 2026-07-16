@@ -36,7 +36,8 @@ interface CreateOrderModalProps {
 
 const DELIVERY_METHODS = [
     { value: "PICKUP", label: "Самовывоз" },
-    { value: "CDEK", label: "СДЭК" },
+    { value: "CDEK", label: "СДЭК Курьер (Дверь)" },
+    { value: "CDEK_PVZ", label: "СДЭК Склад-Склад" },
     { value: "ALMATY_COURIER", label: "Курьер по Алматы" },
     { value: "RIKA", label: "Рика" },
     { value: "POST", label: "Казпочта" },
@@ -61,6 +62,7 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
     const [street, setStreet] = useState("");
     const [house, setHouse] = useState("");
     const [apt, setApt] = useState("");
+    const [cdekPvzCode, setCdekPvzCode] = useState("");
     const [simpleAddress, setSimpleAddress] = useState("");
     const [postalCode, setPostalCode] = useState("");
 
@@ -215,14 +217,15 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
         const customer = {
             name: customerName,
             phone: customerPhone,
-            city: deliveryMethod === "CDEK" ? city : undefined,
+            city: (deliveryMethod === "CDEK" || deliveryMethod === "CDEK_PVZ") ? city : undefined,
+            cdekPvzCode: deliveryMethod === "CDEK_PVZ" ? cdekPvzCode : undefined,
             address: deliveryMethod === "PICKUP" ? undefined : address,
             postalCode: deliveryMethod === "POST" ? postalCode : undefined
         };
 
         const payment = {
             method: paymentMethod || "Не указано",
-            codAmount: deliveryMethod === "CDEK" && codAmount ? parseFloat(codAmount) : undefined
+            codAmount: (deliveryMethod === "CDEK" || deliveryMethod === "CDEK_PVZ") && codAmount ? parseFloat(codAmount) : undefined
         };
 
         const source = isQuickSale ? "SHOWROOM_POS" : "POS";
@@ -558,7 +561,7 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
                                     onChange={(e) => setPaymentMethod(e.target.value)}
                                 />
 
-                                {deliveryMethod === "CDEK" && (
+                                {(deliveryMethod === "CDEK" || deliveryMethod === "CDEK_PVZ") && (
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2">
                                             <label className="text-sm whitespace-nowrap">Наложка (СДЭК):</label>

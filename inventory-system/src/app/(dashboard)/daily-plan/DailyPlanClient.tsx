@@ -147,7 +147,8 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
 
     function getCourierLabel(method: string) {
         switch (method) {
-            case "CDEK": return "СДЭК";
+            case "CDEK": return "СДЭК (Дверь)";
+            case "CDEK_PVZ": return "СДЭК Склад";
             case "ALMATY_COURIER": return "Курьер по Алматы";
             case "RIKA": return "Рика";
             case "POST": return "Почта";
@@ -397,11 +398,12 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
                                         </td>
                                         <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                                             <span className={`px-2 py-1 rounded text-xs font-semibold
-                                                ${order.deliveryMethod === 'CDEK' ? 'bg-green-100 text-green-800' :
+                                                ${(order.deliveryMethod === "CDEK" || order.deliveryMethod === "CDEK_PVZ") ? 'bg-green-100 text-green-800' :
                                                     order.deliveryMethod === 'YANDEX' ? 'bg-yellow-100 text-yellow-800' :
                                                         order.deliveryMethod === 'PICKUP' ? 'bg-gray-100 text-gray-800' :
                                                             'bg-blue-100 text-blue-800'}`}>
                                                 {getCourierLabel(order.deliveryMethod)}
+                                                {order.deliveryMethod === "CDEK_PVZ" && order.cdekPvzCode && <div className="text-[10px] mt-0.5 opacity-70">ПВЗ: {order.cdekPvzCode}</div>}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
@@ -434,7 +436,7 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
                                                     </div>
                                                 ))}
                                             </div>
-                                            {order.deliveryMethod === 'CDEK' && (
+                                            {(order.deliveryMethod === "CDEK" || order.deliveryMethod === "CDEK_PVZ") && (
                                                 <div className="mt-2">
                                                     {order.trackingNumber ? (
                                                         <div className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded inline-block">

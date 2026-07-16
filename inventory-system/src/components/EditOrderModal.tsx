@@ -36,6 +36,7 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
         house: order.house || "",
         apartment: order.apartment || "",
         postalCode: order.postalCode || "", // Added Postal Code
+        cdekPvzCode: order.cdekPvzCode || "",
         comment: order.comment || "",
         deliveryMethod: order.deliveryMethod,
         paymentMethod: order.paymentMethod,
@@ -47,7 +48,7 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
     const handleSaveDetails = async () => {
         let finalizedForm = { ...form };
 
-        if (form.deliveryMethod === "CDEK") {
+        if (form.deliveryMethod === "CDEK" || form.deliveryMethod === "CDEK_PVZ") {
             finalizedForm.clientPhone = formatCdekPhone(form.clientPhone);
             if (!isValidCdekPhone(finalizedForm.clientPhone)) {
                 alert("Для СДЭК номер телефона должен быть в формате +7XXXXXXXXXX (10 цифр после +7)");
@@ -240,7 +241,8 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
                                 <select className="w-full border p-2 rounded mb-2" value={form.deliveryMethod} onChange={e => setForm({ ...form, deliveryMethod: e.target.value })}>
                                     <option value="PICKUP">Самовывоз</option>
                                     <option value="POST">Казпочта</option>
-                                    <option value="CDEK">СДЭК</option>
+                                    <option value="CDEK">СДЭК Курьер (Дверь)</option>
+                                    <option value="CDEK_PVZ">СДЭК Склад-Склад</option>
                                     <option value="YANDEX">Яндекс</option>
                                     <option value="ALMATY_COURIER">Курьер (Алматы)</option>
                                 </select>

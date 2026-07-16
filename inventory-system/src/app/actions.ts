@@ -102,6 +102,7 @@ interface CustomerDetails {
     city?: string;
     address?: string; // Street + House + Apt
     postalCode?: string;
+    cdekPvzCode?: string;
 }
 
 interface PaymentDetails {
@@ -182,6 +183,7 @@ export async function createOrder(
                 city: customer?.city,
                 address: customer?.address,
                 postalCode: customer?.postalCode,
+                cdekPvzCode: customer?.cdekPvzCode,
                 paymentMethod: payment?.method || "CASH",
                 codAmount: payment?.codAmount,
                 comment,
