@@ -31,6 +31,7 @@ interface Order {
     trackingNumber?: string | null;
     status: string;
     comment: string | null;
+    cdekPvzCode?: string | null;
 }
 
 import { createCdekOrder } from "@/app/actions";

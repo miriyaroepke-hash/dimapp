@@ -33,6 +33,7 @@ interface Order {
     createdAt: Date;
     trackingNumber?: string | null;
     comment: string | null;
+    cdekPvzCode?: string | null;
     items: any[];
     history: any[];
 }
