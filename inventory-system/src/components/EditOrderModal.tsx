@@ -45,6 +45,31 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
         paymentStatus: order.paymentStatus || "PENDING",
     });
 
+    useEffect(() => {
+        if (form.deliveryMethod === 'CDEK_PVZ' && form.city.length > 2) {
+            const fetchPvz = async () => {
+                setIsLoadingPvz(true);
+                try {
+                    const res = await fetch(`/api/cdek/pvz?city=${encodeURIComponent(form.city)}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setPvzList(Array.isArray(data) ? data : []);
+                    } else {
+                        setPvzList([]);
+                    }
+                } catch {
+                    setPvzList([]);
+                } finally {
+                    setIsLoadingPvz(false);
+                }
+            };
+            const timer = setTimeout(fetchPvz, 800);
+            return () => clearTimeout(timer);
+        } else {
+            setPvzList([]);
+        }
+    }, [form.deliveryMethod, form.city]);
+
     const handleSaveDetails = async () => {
         let finalizedForm = { ...form };
 
@@ -247,7 +272,7 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
                                     <option value="ALMATY_COURIER">Курьер (Алматы)</option>
                                 </select>
 
-                                {form.deliveryMethod === "POST" && (
+                                                                {form.deliveryMethod === "POST" && (
                                     <>
                                         <label className="block text-sm font-medium text-gray-700">Индекс (Казпочта) *</label>
                                         <input
@@ -257,6 +282,31 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
                                             value={form.postalCode}
                                             onChange={e => setForm({ ...form, postalCode: e.target.value })}
                                         />
+                                    </>
+                                )}
+
+                                {form.deliveryMethod === "CDEK_PVZ" && (
+                                    <>
+                                        <label className="block text-sm font-medium text-gray-700">Пункт выдачи СДЭК *</label>
+                                        <select
+                                            className="w-full border-gray-300 border p-2 rounded mb-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                            value={form.cdekPvzCode}
+                                            onChange={e => setForm({ ...form, cdekPvzCode: e.target.value })}
+                                            disabled={isLoadingPvz}
+                                        >
+                                            <option value="">{isLoadingPvz ? "Загрузка ПВЗ..." : (pvzList.length === 0 ? "Сначала укажите город или ПВЗ не найдены" : "Выберите пункт выдачи (ПВЗ)")}</option>
+                                            {form.cdekPvzCode && !pvzList.find(p => p.code === form.cdekPvzCode) && (
+                                                <option value={form.cdekPvzCode}>{form.cdekPvzCode}</option>
+                                            )}
+                                            {pvzList.map(pvz => (
+                                                <option key={pvz.code} value={pvz.code}>
+                                                    {pvz.name} ({pvz.location?.address})
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {pvzList.length > 0 && !form.cdekPvzCode && (
+                                            <p className="text-red-500 text-xs mt-1">Обязательно выберите ПВЗ</p>
+                                        )}
                                     </>
                                 )}
 

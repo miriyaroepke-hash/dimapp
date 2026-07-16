@@ -312,3 +312,24 @@ export async function getPrintLabel(uuids: string[]) {
     const task = await response.json();
     return task.entity.uuid; // This is the print task UUID
 }
+
+export async function getCdekDeliveryPoints(cityCode: number) {
+    const token = await getAccessToken();
+
+    const params = new URLSearchParams({
+        city_code: cityCode.toString(),
+        type: 'PVZ'
+    });
+
+    const response = await fetch(`${CDEK_API_URL}/deliverypoints?${params.toString()}`, {
+        method: "GET",
+        headers: {
+            "Authorization": `Bearer ${token}`
+        }
+    });
+
+    if (!response.ok) return [];
+
+    const points = await response.json();
+    return points;
+}

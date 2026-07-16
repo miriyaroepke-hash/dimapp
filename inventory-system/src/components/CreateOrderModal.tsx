@@ -63,6 +63,8 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
     const [house, setHouse] = useState("");
     const [apt, setApt] = useState("");
     const [cdekPvzCode, setCdekPvzCode] = useState("");
+    const [pvzList, setPvzList] = useState<any[]>([]);
+    const [isLoadingPvz, setIsLoadingPvz] = useState(false);
     const [simpleAddress, setSimpleAddress] = useState("");
     const [postalCode, setPostalCode] = useState("");
 
@@ -70,6 +72,31 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
     const [paymentMethod, setPaymentMethod] = useState("");
     const [codAmount, setCodAmount] = useState("");
     const [comment, setComment] = useState("");
+
+    useEffect(() => {
+        if (deliveryMethod === 'CDEK_PVZ' && city.length > 2) {
+            const fetchPvz = async () => {
+                setIsLoadingPvz(true);
+                try {
+                    const res = await fetch(`/api/cdek/pvz?city=${encodeURIComponent(city)}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setPvzList(Array.isArray(data) ? data : []);
+                    } else {
+                        setPvzList([]);
+                    }
+                } catch {
+                    setPvzList([]);
+                } finally {
+                    setIsLoadingPvz(false);
+                }
+            };
+            const timer = setTimeout(fetchPvz, 800);
+            return () => clearTimeout(timer);
+        } else {
+            setPvzList([]);
+        }
+    }, [deliveryMethod, city]);
 
     // Fetch products from API as user types (debounced)
     useEffect(() => {
@@ -522,6 +549,35 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
                                                             onChange={e => setApt(e.target.value)}
                                                         />
                                                     </div>
+                                                </div>
+                                            ) : deliveryMethod === "CDEK_PVZ" ? (
+                                                <div className="space-y-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Город"
+                                                        className="w-full p-2 border rounded text-sm"
+                                                        value={city}
+                                                        onChange={e => setCity(e.target.value)}
+                                                    />
+                                                    <select
+                                                        className="w-full p-2 border rounded text-sm"
+                                                        value={cdekPvzCode}
+                                                        onChange={e => setCdekPvzCode(e.target.value)}
+                                                        disabled={isLoadingPvz || pvzList.length === 0}
+                                                    >
+                                                        <option value="">{isLoadingPvz ? "Загрузка ПВЗ..." : (pvzList.length === 0 ? "Сначала укажите город или ПВЗ не найдены" : "Выберите пункт выдачи (ПВЗ)")}</option>
+                                                        {cdekPvzCode && !pvzList.find(p => p.code === cdekPvzCode) && (
+                                                            <option value={cdekPvzCode}>{cdekPvzCode}</option>
+                                                        )}
+                                                        {pvzList.map(pvz => (
+                                                            <option key={pvz.code} value={pvz.code}>
+                                                                {pvz.name} ({pvz.location?.address})
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    {pvzList.length > 0 && !cdekPvzCode && (
+                                                        <p className="text-red-500 text-xs mt-1">Обязательно выберите ПВЗ</p>
+                                                    )}
                                                 </div>
                                             ) : (
                                                 <textarea
