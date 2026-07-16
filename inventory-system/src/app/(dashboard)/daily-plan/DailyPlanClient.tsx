@@ -30,6 +30,7 @@ interface Order {
     items: OrderItem[];
     trackingNumber?: string | null;
     status: string;
+    comment: string | null;
 }
 
 import { createCdekOrder } from "@/app/actions";
@@ -207,7 +208,8 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
             "Товары": o.items.map(i => `${i.name} (${i.size || "-"}) x${i.quantity}`).join(", "),
             "Оплата": o.paymentMethod,
             "Наложка": o.codAmount || 0,
-            "Сумма": o.totalAmount
+            "Сумма": o.totalAmount,
+            "Комментарий": o.comment || ""
         }));
 
         const ws = XLSX.utils.json_to_sheet(data);
@@ -415,6 +417,11 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
                                         <td className="px-6 py-4">
                                             <div className="font-medium">{order.clientName || "-"}</div>
                                             <div className="text-xs text-gray-500">{order.clientPhone}</div>
+                                            {order.comment && (
+                                                <div className="mt-1 text-xs text-red-600 bg-red-50 p-1 rounded break-words max-w-[150px]">
+                                                    💬 {order.comment}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 max-w-xs truncate" title={`${order.city || ""} ${order.address || ""}`}>
                                             {order.city} {order.address}
