@@ -17,7 +17,7 @@ export default async function ArchivePage() {
 
     const archivedOrders = await prisma.order.findMany({
         where: whereClause,
-        include: { items: true },
+        include: { items: true, history: { orderBy: { createdAt: "desc" } } },
         orderBy: { createdAt: "desc" }, // Sort by creation date (deduction date) rather than randomly jumping up on status change
         take: 300
     });

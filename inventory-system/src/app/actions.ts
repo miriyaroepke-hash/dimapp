@@ -1,6 +1,8 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { generateEAN13 } from "@/lib/utils";
@@ -356,12 +358,30 @@ export async function syncInventory(scannedItems: { sku: string; quantity: numbe
 
 export async function updateOrderStatus(orderIds: number[], status: string) {
     try {
+        const session = await getServerSession(authOptions);
+        const userId = session?.user?.id ? parseInt(session.user.id as string) : null;
+        const userName = session?.user?.name || "Неизвестный";
+
         await prisma.order.updateMany({
             where: {
                 id: { in: orderIds }
             },
             data: { status }
         });
+        
+        const historyData = orderIds.map(id => ({
+            orderId: id,
+            userId,
+            action: "STATUS_CHANGE",
+            details: `Статус изменен на ${status} (${userName})`
+        }));
+        
+        if (historyData.length > 0) {
+            await prisma.orderHistory.createMany({
+                data: historyData
+            });
+        }
+        
         revalidatePath("/daily-plan");
         revalidatePath("/archive");
         return { success: true };
@@ -373,6 +393,10 @@ export async function updateOrderStatus(orderIds: number[], status: string) {
 
 export async function updateOrderTrackingAndStatus(orderId: number, status: string, trackingNumber?: string) {
     try {
+        const session = await getServerSession(authOptions);
+        const userId = session?.user?.id ? parseInt(session.user.id as string) : null;
+        const userName = session?.user?.name || "Неизвестный";
+
         const data: any = { status };
         if (status === "DELIVERED") {
             data.deliveredAt = new Date();
@@ -384,6 +408,15 @@ export async function updateOrderTrackingAndStatus(orderId: number, status: stri
         await prisma.order.update({
             where: { id: orderId },
             data
+        });
+
+        await prisma.orderHistory.create({
+            data: {
+                orderId,
+                userId,
+                action: "STATUS_CHANGE",
+                details: `Статус изменен на ${status} (${userName})`
+            }
         });
         
         revalidatePath("/daily-plan");

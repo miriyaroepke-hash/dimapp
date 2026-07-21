@@ -18,7 +18,7 @@ export default async function WebsiteOrdersPage() {
             source: "WEBSITE",
             status: "PENDING_CONFIRMATION"
         },
-        include: { items: true },
+        include: { items: true, history: { orderBy: { createdAt: "desc" } } },
         orderBy: { createdAt: "desc" }
     });
 
@@ -27,7 +27,7 @@ export default async function WebsiteOrdersPage() {
             customer: {
                 include: {
                     orders: {
-                        include: { items: true },
+                        include: { items: true, history: { orderBy: { createdAt: "desc" } } },
                         orderBy: { createdAt: 'desc' }
                     }
                 }

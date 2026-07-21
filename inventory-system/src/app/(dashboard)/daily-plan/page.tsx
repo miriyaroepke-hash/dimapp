@@ -20,7 +20,7 @@ export default async function DailyPlanPage() {
     const [activeOrders, kaspiCount] = await Promise.all([
         prisma.order.findMany({
             where: whereClause,
-            include: { items: true },
+            include: { items: true, history: { orderBy: { createdAt: "desc" } } },
             orderBy: { createdAt: "desc" }
         }),
         prisma.order.count({

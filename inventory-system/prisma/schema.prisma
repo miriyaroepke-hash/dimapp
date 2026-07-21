@@ -24,6 +24,7 @@ model User {
   // Relations
   transactions Transaction[]
   orders       Order[]
+  orderHistories OrderHistory[]
 }
 
 model Product {
@@ -199,6 +200,8 @@ model OrderHistory {
   id        Int      @id @default(autoincrement())
   orderId   Int
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
   action    String   // CREATED, UPDATED, STATUS_CHANGE, SENT_TO_CDEK
   details   String?  // Description of change
   createdAt DateTime @default(now())
