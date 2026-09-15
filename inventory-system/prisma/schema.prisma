@@ -116,6 +116,7 @@ model SiteContent {
   how_to_order_kz String? @db.Text
   consent_ru      String? @db.Text
   consent_kz      String? @db.Text
+  show_blog       Boolean @default(false)
   updatedAt   DateTime @default(now()) @updatedAt
 }
 

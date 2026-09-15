@@ -52,7 +52,8 @@ export default function CmsForm({ initialData, initialCategories }: { initialDat
         how_to_order_ru: initialData?.how_to_order_ru || "",
         how_to_order_kz: initialData?.how_to_order_kz || "",
         consent_ru: initialData?.consent_ru || "",
-        consent_kz: initialData?.consent_kz || "",
+                consent_kz: initialData?.consent_kz || "",
+        show_blog: initialData?.show_blog ?? false,
     });
     const [categoryContents, setCategoryContents] = useState<Record<string, any>>(initialCategories || {});
     const [uploadingField, setUploadingField] = useState<string | null>(null);
