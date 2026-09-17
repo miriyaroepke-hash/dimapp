@@ -299,7 +299,7 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                 {/* Chat Header */}
                                 <div className="p-4 border-b flex justify-between items-center bg-white shadow-sm z-10">
                                     <div>
-                                        <h2 className="font-bold text-lg">Ксения (Вы) и {selectedTicket.customer?.firstName || 'Клиент'}</h2>
+                                        <h2 className="font-bold text-lg">Жанна (Вы) и {selectedTicket.customer?.firstName || 'Клиент'}</h2>
                                         <div className="text-sm text-gray-500">
                                             Клиент: {selectedTicket.customer?.firstName || 'Имя не указано'} ({selectedTicket.customer?.phone})
                                         </div>
