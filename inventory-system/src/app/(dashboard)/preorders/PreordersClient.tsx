@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, X, Loader2, Package, ShoppingBag } from "lucide-react";
+import { Check, Loader2, ShoppingBag } from "lucide-react";
 import { format } from "date-fns";
 
 export default function PreordersClient({ initialProducts }: { initialProducts: any[] }) {
@@ -109,7 +109,7 @@ export default function PreordersClient({ initialProducts }: { initialProducts: 
                                     <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Заказы клиентов:</h4>
                                     <div className="space-y-3">
                                         {product.orderItems.map((item: any) => (
-                                            <div key={item.id} className={\`flex items-center justify-between p-3 rounded-lg border \${item.supplierOrdered ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-100'}\`}>
+                                            <div key={item.id} className={`flex items-center justify-between p-3 rounded-lg border ${item.supplierOrdered ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-100'}`}>
                                                 <div>
                                                     <div className="font-semibold text-sm">{item.order.orderNumber}</div>
                                                     <div className="text-xs text-gray-600 flex items-center gap-2">
@@ -125,11 +125,11 @@ export default function PreordersClient({ initialProducts }: { initialProducts: 
                                                 <button
                                                     onClick={() => toggleSupplierOrdered(item.id, item.supplierOrdered)}
                                                     disabled={loadingMap[item.id]}
-                                                    className={\`flex items-center justify-center w-10 h-10 rounded-full transition-colors \${
+                                                    className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${
                                                         item.supplierOrdered 
                                                             ? 'bg-green-500 hover:bg-green-600 text-white' 
                                                             : 'bg-white border-2 border-gray-300 hover:border-green-500 text-transparent hover:text-green-500'
-                                                    }\`}
+                                                    }`}
                                                     title={item.supplierOrdered ? 'Отменить отметку' : 'Отметить как закуплено'}
                                                 >
                                                     {loadingMap[item.id] ? <Loader2 className="w-5 h-5 animate-spin text-gray-400" /> : <Check className="w-6 h-6" />}

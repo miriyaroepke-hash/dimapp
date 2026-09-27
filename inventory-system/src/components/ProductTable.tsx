@@ -23,6 +23,7 @@ interface Product {
     quantityShowroom: number;
     preOrderDays: number | null;
     image: string | null;
+    isPreorder: boolean;
     storefrontProductId: number | null;
 }
 

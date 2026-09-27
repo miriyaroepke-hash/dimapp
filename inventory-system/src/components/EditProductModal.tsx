@@ -14,6 +14,7 @@ interface Product {
     quantity: number;
     quantityShowroom: number;
     image: string | null;
+    isPreorder: boolean;
 }
 
 interface EditProductModalProps {
@@ -34,6 +35,7 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
         quantity: product.quantity.toString(),
         quantityShowroom: product.quantityShowroom.toString(),
         image: product.image || "",
+        isPreorder: (product as any).isPreorder || false,
     });
 
     const compressImage = (file: File): Promise<Blob> => {
