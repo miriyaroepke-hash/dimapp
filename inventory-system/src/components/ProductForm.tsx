@@ -11,6 +11,7 @@ export default function ProductForm() {
     const [imageUrl, setImageUrl] = useState<string>("");
     const [loading, setLoading] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [isPreorder, setIsPreorder] = useState(false);
 
     const compressImage = (file: File): Promise<Blob> => {
         return new Promise((resolve, reject) => {
@@ -133,6 +134,20 @@ export default function ProductForm() {
                 </button>
             </div>
 
+            <div className="flex items-center gap-2 mb-4 p-3 bg-purple-50 rounded border border-purple-100">
+                <input 
+                    type="checkbox" 
+                    id="isPreorder"
+                    name="isPreorder" 
+                    checked={isPreorder}
+                    onChange={(e) => setIsPreorder(e.target.checked)}
+                    className="w-5 h-5 text-purple-600 rounded cursor-pointer" 
+                />
+                <label htmlFor="isPreorder" className="font-bold text-purple-800 cursor-pointer select-none">
+                    Предзаказ (товар доступен под заказ с фабрики)
+                </label>
+            </div>
+
             <div>
                 <label className="block font-medium mb-1">Название товара</label>
                 <input name="name" required className="w-full border p-2 rounded" />
@@ -147,7 +162,7 @@ export default function ProductForm() {
                         </div>
                         <div>
                             <label className="block font-medium mb-1">Количество (шт)</label>
-                            <input name="quantity" type="number" defaultValue={0} required className="w-full border p-2 rounded" />
+                            <input name="quantity" type="number" defaultValue={0} required={!isPreorder} disabled={isPreorder} className="w-full border p-2 rounded disabled:opacity-50 disabled:bg-gray-100" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4 mt-4">

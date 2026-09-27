@@ -17,6 +17,7 @@ export async function createProduct(formData: FormData) {
 
     // Mass add logic
     const isMassAdd = formData.get("isMassAdd") === "true";
+    const isPreorder = formData.get("isPreorder") === "on";
 
     if (isMassAdd) {
         const sizesToCheck = ["42", "44", "46", "48", "50", "52", "54"];

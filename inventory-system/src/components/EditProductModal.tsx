@@ -119,7 +119,8 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
             ...form,
             price: parseFloat(form.price),
             quantity: parseInt(form.quantity),
-            quantityShowroom: parseInt(form.quantityShowroom),
+            quantityShowroom: 0,
+            isPreorder: form.isPreorder,
             applyImageToAll
         });
         setLoading(false);
@@ -228,20 +229,12 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Склад *</label>
                                 <input
                                     type="number"
-                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-bold text-green-700"
+                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-bold text-green-700 disabled:opacity-50 disabled:bg-gray-100" disabled={form.isPreorder}
                                     value={form.quantity}
                                     onChange={e => setForm({ ...form, quantity: e.target.value })}
                                 />
                             </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Шоурум *</label>
-                                <input
-                                    type="number"
-                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-bold text-purple-700"
-                                    value={form.quantityShowroom}
-                                    onChange={e => setForm({ ...form, quantityShowroom: e.target.value })}
-                                />
-                            </div>
+                            
                         </div>
                     </div>
                 </div>

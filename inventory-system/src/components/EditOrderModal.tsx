@@ -428,9 +428,7 @@ export default function EditOrderModal({ order, products, onClose }: EditOrderMo
                                                                     )}
                                                                     <span>SKU: {p.sku}</span>
                                                                     <span className="text-gray-400">|</span>
-                                                                    <span>Склад: {p.quantity}</span>
-                                                                    <span className="text-gray-400">|</span>
-                                                                    <span>Шоурум: {p.quantityShowroom || 0}</span>
+                                                                    {(p as any).isPreorder ? <span className="text-purple-600 font-bold">Предзаказ</span> : <span>Ост: {p.quantity}</span>}
                                                                 </div>
                                                             </div>
                                                             <div className="font-bold text-sm">₸ {p.price}</div>

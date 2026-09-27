@@ -190,7 +190,7 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                                         Штрихкод: p.sku,
                                         Размер: p.size || "",
                                         Цена: p.price,
-                                        "Шоурум": p.quantityShowroom,
+                                        "Предзаказ": p.isPreorder ? "Да" : "Нет",
                                         "Склад": p.quantity,
                                         "Всего": p.quantity + p.quantityShowroom
                                     })));
@@ -235,69 +235,13 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                 <table className="w-full text-left">
                     <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
                         <tr>
-                            <th className="px-6 py-3 w-10">
-                                <button onClick={toggleSelectAll}>
-                                    {products.length > 0 && selectedIds.length === products.length ? (
-                                        <CheckSquare className="w-5 h-5 text-blue-600" />
-                                    ) : (
-                                        <Square className="w-5 h-5 text-gray-400" />
-                                    )}
-                                </button>
-                            </th>
-                            <th className="px-6 py-3">Фото</th>
                             <th
                                 className="px-6 py-3 cursor-pointer hover:bg-gray-100"
-                                onClick={() => handleSort("name")}
+                                onClick={() => handleSort("isPreorder")}
                             >
                                 <div className="flex items-center gap-1 group">
-                                    Наименование
-                                    <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "name" ? "text-blue-600" : "text-gray-300"}`} />
-                                </div>
-                            </th>
-                            <th
-                                className="px-6 py-3 cursor-pointer hover:bg-gray-100"
-                                onClick={() => handleSort("sku")}
-                            >
-                                <div className="flex items-center gap-1 group">
-                                    Штрихкод
-                                    <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "sku" ? "text-blue-600" : "text-gray-300"}`} />
-                                </div>
-                            </th>
-
-                            <th
-                                className="px-6 py-3 cursor-pointer hover:bg-gray-100"
-                                onClick={() => handleSort("size")}
-                            >
-                                <div className="flex items-center gap-1 group">
-                                    Размер
-                                    <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "size" ? "text-blue-600" : "text-gray-300"}`} />
-                                </div>
-                            </th>
-                            <th
-                                className="px-6 py-3 cursor-pointer hover:bg-gray-100"
-                                onClick={() => handleSort("price")}
-                            >
-                                <div className="flex items-center gap-1 group">
-                                    Цена
-                                    <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "price" ? "text-blue-600" : "text-gray-300"}`} />
-                                </div>
-                            </th>
-                            <th
-                                className="px-6 py-3 cursor-pointer hover:bg-gray-100"
-                                onClick={() => handleSort("storefrontProductId")}
-                            >
-                                <div className="flex items-center gap-1 group whitespace-nowrap">
-                                    Витрина
-                                    <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "storefrontProductId" ? "text-blue-600" : "text-gray-300"}`} />
-                                </div>
-                            </th>
-                            <th
-                                className="px-6 py-3 cursor-pointer hover:bg-gray-100"
-                                onClick={() => handleSort("quantityShowroom")}
-                            >
-                                <div className="flex items-center gap-1 group">
-                                    Шоурум
-                                    <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "quantityShowroom" ? "text-blue-600" : "text-gray-300"}`} />
+                                    Предзаказ
+                                    <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "isPreorder" ? "text-blue-600" : "text-gray-300"}`} />
                                 </div>
                             </th>
                             <th

@@ -12,7 +12,7 @@ interface Product {
     size: string | null;
     price: number;
     quantity: number;
-    quantityShowroom?: number;
+    isPreorder?: boolean;
     image?: string | null;
 }
 
@@ -123,7 +123,7 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
         setCart(prev => {
             const existing = prev.find(item => item.product.id === product.id);
             if (existing) {
-                const maxQty = (product.quantity || 0) + (product.quantityShowroom || 0);
+                const maxQty = (product as any).isPreorder ? 9999 : (product.quantity || 0);
                 if (existing.cartQty >= maxQty) return prev; // Max stock reached
                 return prev.map(item =>
                     item.product.id === product.id
@@ -189,7 +189,7 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
         setCart(prev => prev.map(item => {
             if ((item.product.sku || "CUSTOM") === sku) {
                 const prod = item.product as Product;
-                const max = (prod as any).isCustom ? 999 : (prod.quantity || 0) + (prod.quantityShowroom || 0);
+                const max = (prod as any).isCustom || (prod as any).isPreorder ? 9999 : (prod.quantity || 0);
                 return { ...item, cartQty: Math.min(Math.max(1, qty), max || 999) };
             }
             return item;
@@ -399,7 +399,7 @@ export default function CreateOrderModal({ onClose, isQuickSale = false }: Creat
                                             </div>
                                             <div className="text-right">
                                                 <div className="font-bold">₸ {product.price}</div>
-                                                <div className="text-xs text-gray-500">Ост: {(product.quantity || 0) + (product.quantityShowroom || 0)}</div>
+                                                <div className="text-xs text-gray-500">{(product as any).isPreorder ? "Предзаказ" : `Ост: ${product.quantity || 0}`}</div>
                                             </div>
                                         </button>
                                     ))}
