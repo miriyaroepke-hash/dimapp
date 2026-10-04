@@ -236,7 +236,19 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                                     onChange={e => setForm({ ...form, quantity: e.target.value })}
                                 />
                             </div>
-                            
+                        </div>
+                        
+                        <div className="flex items-center gap-3 bg-purple-50 p-3 rounded-lg border border-purple-100">
+                            <input 
+                                type="checkbox" 
+                                id="edit-isPreorder"
+                                checked={form.isPreorder}
+                                onChange={(e) => setForm({ ...form, isPreorder: e.target.checked })}
+                                className="w-5 h-5 text-purple-600 rounded cursor-pointer" 
+                            />
+                            <label htmlFor="edit-isPreorder" className="font-bold text-purple-800 cursor-pointer select-none text-sm">
+                                Предзаказ (товар доступен под заказ с фабрики)
+                            </label>
                         </div>
                     </div>
                 </div>

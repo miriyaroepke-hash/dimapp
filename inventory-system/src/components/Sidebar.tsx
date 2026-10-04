@@ -10,7 +10,7 @@ import clsx from "clsx";
 const navItems = [
     { name: "План дня", href: "/daily-plan", icon: LayoutDashboard },
     { name: "Склад", href: "/inventory", icon: Package },
-    { name: "Шоурум", href: "/showroom", icon: Store },
+    { name: "Предзаказы", href: "/preorders", icon: Package },
     { name: "Витрина", href: "/storefront", icon: Store },
     { name: "Заказы сайта", href: "/website-orders", icon: Globe },
     { name: "Инвентаризация", href: "/stock-check", icon: ShoppingCart },
