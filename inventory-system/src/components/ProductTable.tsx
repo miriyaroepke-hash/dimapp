@@ -8,7 +8,7 @@ import PrintLabelModal from "./PrintLabelModal";
 import EditProductModal from "./EditProductModal";
 import GroupStorefrontModal from "./GroupStorefrontModal";
 import TransferModal from "./TransferModal";
-import { deleteProducts, getStorefrontProducts } from "@/app/actions";
+import { deleteProducts, getStorefrontProducts, bulkUpdatePreorder } from "@/app/actions";
 
 interface Product {
     id: number;
@@ -41,6 +41,7 @@ export default function ProductTable({ products, total, currentPage, totalPages 
     const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isUpdatingPreorder, setIsUpdatingPreorder] = useState(false);
     const [printProducts, setPrintProducts] = useState<ProductLabelData[] | null>(null);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
@@ -87,6 +88,25 @@ export default function ProductTable({ products, total, currentPage, totalPages 
         } else {
             setSelectedIds(prev => [...prev, id]);
         }
+    };
+
+    
+    const handleBulkPreorder = async (isPreorder: boolean) => {
+        if (!confirm(`Сделать выбранные товары (${selectedIds.length}) ${isPreorder ? 'ПРЕДЗАКАЗОМ' : 'ОБЫЧНЫМИ'}?`)) return;
+        setIsUpdatingPreorder(true);
+        const res = await bulkUpdatePreorder(selectedIds, isPreorder);
+        setIsUpdatingPreorder(false);
+        if (res.success) {
+            setSelectedIds([]);
+        } else {
+            alert(res.error || 'Ошибка');
+        }
+    };
+    
+    const handleTogglePreorder = async (id: number, isPreorder: boolean) => {
+        setIsUpdatingPreorder(true);
+        await bulkUpdatePreorder([id], isPreorder);
+        setIsUpdatingPreorder(false);
     };
 
     const handleBulkDelete = async () => {
@@ -218,6 +238,23 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                             title="Переместить между складами"
                         >
                             <ArrowRightLeft className="w-4 h-4" /> Переместить
+                        </button>
+                        
+                        <button
+                            onClick={() => handleBulkPreorder(true)}
+                            disabled={isUpdatingPreorder}
+                            className="flex items-center gap-1 text-sm text-purple-700 hover:text-purple-900 ml-2 font-medium bg-purple-100 px-2 py-1 rounded disabled:opacity-50"
+                            title="Отметить как предзаказ"
+                        >
+                            {isUpdatingPreorder ? "..." : "+ В предзаказ"}
+                        </button>
+                        <button
+                            onClick={() => handleBulkPreorder(false)}
+                            disabled={isUpdatingPreorder}
+                            className="flex items-center gap-1 text-sm text-gray-700 hover:text-gray-900 ml-2 font-medium bg-gray-200 px-2 py-1 rounded disabled:opacity-50"
+                            title="Убрать из предзаказа"
+                        >
+                            {isUpdatingPreorder ? "..." : "- Из предзаказа"}
                         </button>
                         <button
                             onClick={handleBulkDelete}
@@ -359,13 +396,16 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                                         )}
                                     </td>
                                     <td className="px-6 py-4">
-                                        {product.isPreorder ? (
-                                            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
-                                                Да
-                                            </span>
-                                        ) : (
-                                            <span className="text-gray-300">—</span>
-                                        )}
+                                        <div className="flex items-center justify-center">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={product.isPreorder}
+                                                onChange={(e) => handleTogglePreorder(product.id, e.target.checked)}
+                                                disabled={isUpdatingPreorder}
+                                                className="w-5 h-5 text-purple-600 rounded cursor-pointer disabled:opacity-50"
+                                                title="Отметить как предзаказ"
+                                            />
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${product.quantity > 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"

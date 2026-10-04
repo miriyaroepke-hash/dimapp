@@ -1554,3 +1554,21 @@ export async function deleteBlogPost(id: number) {
         return { success: false, error: e.message };
     }
 }
+
+export async function bulkUpdatePreorder(ids: number[], isPreorder: boolean) {
+    try {
+        await prisma.product.updateMany({
+            where: {
+                id: { in: ids }
+            },
+            data: {
+                isPreorder
+            }
+        });
+        revalidatePath("/inventory");
+        return { success: true };
+    } catch (e) {
+        console.error("Bulk update preorder error:", e);
+        return { error: "Не удалось обновить статус предзаказа" };
+    }
+}
