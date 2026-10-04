@@ -194,8 +194,46 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                     <div className="flex gap-2 items-center bg-blue-50 px-3 py-1 rounded border border-blue-100">
                         <span className="text-sm font-bold text-blue-700">{selectedIds.length} выбрано</span>
                         <div className="h-4 w-px bg-blue-200 mx-2"></div>
+                        <button
+                            onClick={handleBulkPrint}
+                            className="flex items-center gap-1 text-sm text-gray-700 hover:text-black"
+                            title="Печать выбранных"
+                        >
+                            <Printer className="w-4 h-4" /> Печать
+                        </button>
+                        <button
+                            onClick={() => {
+                                const selectedProducts = products.filter(p => selectedIds.includes(p.id));
+                                import("xlsx").then(xlsx => {
+                                    const worksheet = xlsx.utils.json_to_sheet(selectedProducts.map(p => ({
+                                        ID: p.id,
+                                        Наименование: p.name,
+                                        Штрихкод: p.sku,
+                                        Размер: p.size || "",
+                                        Цена: p.price,
+                                        "Предзаказ": p.isPreorder ? "Да" : "Нет",
+                                        "Склад": p.quantity,
+                                        "Всего": p.quantity + p.quantityShowroom
+                                    })));
+                                    const workbook = xlsx.utils.book_new();
+                                    xlsx.utils.book_append_sheet(workbook, worksheet, "Товары");
+                                    xlsx.writeFile(workbook, "products_export.xlsx");
+                                });
+                            }}
+                            className="flex items-center gap-1 text-sm text-green-700 hover:text-green-900 ml-2"
+                            title="Скачать в Excel"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="16" y2="17" /><polyline points="10 9 9 9 8 9" /></svg> Excel
+                        </button>
+                        <button
+                            onClick={() => setIsGroupModalOpen(true)}
+                            className="flex items-center gap-1 text-sm text-indigo-700 hover:text-indigo-900 ml-2 font-medium bg-indigo-100 px-2 py-1 rounded"
+                            title="Объединить в карточку для витрины"
+                        >
+                            <span className="text-xl leading-none -mt-1">+</span> В Витрину
+                        </button>
                         
-                        
+
                         <button
                             onClick={() => handleBulkPreorder(true)}
                             disabled={isUpdatingPreorder}
