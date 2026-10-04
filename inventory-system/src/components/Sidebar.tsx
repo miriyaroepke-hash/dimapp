@@ -55,7 +55,7 @@ export default function Sidebar() {
                         <h1 className="text-xl font-bold uppercase tracking-widest">Dimmiani</h1>
                     </div>
 
-                    <nav className="flex-1 px-4 py-6 space-y-2">
+                    <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
                         {allNavItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = pathname === item.href;
@@ -65,7 +65,7 @@ export default function Sidebar() {
                                     href={item.href}
                                     onClick={() => setIsOpen(false)}
                                     className={clsx(
-                                        "flex items-center px-4 py-3 rounded-lg transition-colors font-medium",
+                                        "flex items-center px-4 py-2.5 rounded-lg transition-colors font-medium text-sm md:text-base",
                                         isActive ? "bg-black text-white" : "text-gray-900 hover:bg-[#D5C4A1] hover:text-black"
                                     )}
                                 >
@@ -79,7 +79,7 @@ export default function Sidebar() {
                     <div className="p-4 border-t border-gray-400">
                         <button
                             onClick={() => signOut()}
-                            className="flex items-center w-full px-4 py-3 text-gray-900 rounded-lg hover:bg-[#D5C4A1] hover:text-black transition-colors font-medium"
+                            className="flex items-center w-full px-4 py-2.5 text-sm md:text-base text-gray-900 rounded-lg hover:bg-[#D5C4A1] hover:text-black transition-colors font-medium"
                         >
                             <LogOut className="w-5 h-5 mr-3" />
                             Выйти
