@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import nodemailer from 'nodemailer';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 
@@ -14,15 +13,6 @@ export async function GET(request: Request) {
     }
 
     try {
-        const EMAIL_USER = process.env.EMAIL_USER;
-        const EMAIL_PASS = process.env.EMAIL_PASS;
-        const TARGET_EMAIL = process.env.BACKUP_TARGET_EMAIL;
-
-        if (!EMAIL_USER || !EMAIL_PASS || !TARGET_EMAIL) {
-            console.error('Email credentials missing');
-            return NextResponse.json({ error: 'Email credentials missing in Vercel env' }, { status: 500 });
-        }
-
         const products = await prisma.product.findMany();
         const activeOrders = await prisma.order.findMany({
             where: { status: { not: 'COMPLETED' } },
@@ -85,29 +75,40 @@ export async function GET(request: Request) {
         const dateStr = format(new Date(), 'yyyy-MM-dd');
         const filename = `Dimmiani_Backup_${dateStr}.xlsx`;
 
-        // Send Email
-        const transporter = nodemailer.createTransport({
-            service: 'gmail', // You can change this if you use Yandex or Mail.ru
-            auth: {
-                user: EMAIL_USER,
-                pass: EMAIL_PASS,
-            },
-        });
-
-        await transporter.sendMail({
-            from: `"Dimmiani System" <${EMAIL_USER}>`,
-            to: TARGET_EMAIL,
-            subject: `Ежедневный бэкап: Склад и Заказы (${dateStr})`,
-            text: `Во вложении свежая выгрузка остатков склада и всех заказов на ${dateStr}.`,
-            attachments: [
-                {
-                    filename: filename,
-                    content: excelBuffer
+        // Send to Telegram
+        const botToken = '8265144846:AAGRAFhMQ-eplanFEbmqnbFCy9y4rJwbdgE';
+        const chatIdEnv = '-1001807702533';
+        
+        if (botToken && chatIdEnv) {
+            const chatIds = chatIdEnv.split(",").map(id => id.trim()).filter(Boolean);
+            
+            for (const chatId of chatIds) {
+                try {
+                    const formData = new FormData();
+                    formData.append('chat_id', chatId);
+                    formData.append('caption', `📦 <b>Ежедневный бэкап базы</b>\n\nДата: ${dateStr}\nАктивных заказов: ${activeOrders.length}\n\nСохраните этот файл на случай сбоев.`);
+                    formData.append('parse_mode', 'HTML');
+                    
+                    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                    formData.append('document', blob, filename);
+                    
+                    const url = `https://api.telegram.org/bot${botToken}/sendDocument`;
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!res.ok) {
+                        const errText = await res.text();
+                        console.error(`Telegram sendDocument failed for ${chatId}:`, errText);
+                    }
+                } catch (e) {
+                    console.error(`Failed to send Telegram backup to ${chatId}`, e);
                 }
-            ]
-        });
+            }
+        }
 
-        return NextResponse.json({ success: true, message: 'Backup emailed successfully' });
+        return NextResponse.json({ success: true, message: 'Backup sent to Telegram successfully' });
 
     } catch (error: any) {
         console.error('Backup cron job error:', error);
