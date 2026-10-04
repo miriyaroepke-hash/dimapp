@@ -352,16 +352,13 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                                         )}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="flex items-center justify-center">
-                                            <input 
-                                                type="checkbox" 
-                                                checked={product.isPreorder}
-                                                onChange={(e) => handleTogglePreorder(product.id, e.target.checked)}
-                                                disabled={isUpdatingPreorder}
-                                                className="w-5 h-5 text-purple-600 rounded cursor-pointer disabled:opacity-50"
-                                                title="Отметить как предзаказ"
-                                            />
-                                        </div>
+                                        {product.isPreorder ? (
+                                            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+                                                Да
+                                            </span>
+                                        ) : (
+                                            <span className="text-gray-300">—</span>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${product.quantity > 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
