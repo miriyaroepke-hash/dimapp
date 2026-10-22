@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Check, MessageCircle, Clock, Truck, CreditCard, XCircle, MessageSquare, User, Shield, CheckCircle } from "lucide-react";
+import { Check, Clock, Truck, CreditCard, XCircle, MessageSquare, User, Shield, RefreshCw } from "lucide-react";
 import { confirmWebsiteOrder, cancelWebsiteOrder } from "./actions";
 import { replyToTicket, closeTicket } from "@/app/actions";
 
@@ -28,6 +29,7 @@ interface Order {
 }
 
 export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order[], tickets: any[] }) {
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<"orders" | "tickets">("orders");
 
     // Orders state
@@ -38,6 +40,77 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
     const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
     const [replyContent, setReplyContent] = useState("");
     const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const prevMessagesCountRef = useRef<number>(0);
+
+    // Restore tab and selectedTicketId from URL or sessionStorage on mount (so F5 reload stays in the same chat!)
+    useEffect(() => {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const urlTab = params.get("tab") || sessionStorage.getItem("wo_activeTab");
+            const urlTicketId = params.get("ticketId") || sessionStorage.getItem("wo_selectedTicketId");
+
+            if (urlTab === "tickets" || urlTab === "orders") {
+                setActiveTab(urlTab);
+            }
+            if (urlTicketId && tickets?.some(t => t.id === urlTicketId)) {
+                setSelectedTicketId(urlTicketId);
+            } else if (tickets?.length > 0 && !selectedTicketId) {
+                setSelectedTicketId(tickets[0].id);
+            }
+        } catch (e) {}
+    }, []);
+
+    // Save activeTab & selectedTicketId to URL + sessionStorage whenever they change
+    const handleTabChange = (tab: "orders" | "tickets") => {
+        setActiveTab(tab);
+        try {
+            sessionStorage.setItem("wo_activeTab", tab);
+            const params = new URLSearchParams(window.location.search);
+            params.set("tab", tab);
+            if (selectedTicketId) params.set("ticketId", selectedTicketId);
+            window.history.replaceState(null, "", `?${params.toString()}`);
+        } catch (e) {}
+    };
+
+    const handleSelectTicket = (ticketId: string) => {
+        setSelectedTicketId(ticketId);
+        try {
+            sessionStorage.setItem("wo_selectedTicketId", ticketId);
+            const params = new URLSearchParams(window.location.search);
+            params.set("tab", "tickets");
+            params.set("ticketId", ticketId);
+            window.history.replaceState(null, "", `?${params.toString()}`);
+        } catch (e) {}
+    };
+
+    // Auto-refresh in background every 4 seconds so new client messages/receipts appear automatically
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.refresh();
+        }, 4000);
+        return () => clearInterval(interval);
+    }, [router]);
+
+    const handleManualRefresh = () => {
+        setIsRefreshing(true);
+        router.refresh();
+        setTimeout(() => setIsRefreshing(false), 600);
+    };
+
+    // Ticket Handlers
+    const selectedTicket = tickets?.find(t => t.id === selectedTicketId);
+
+    // Scroll to bottom when switching tickets or when a new message arrives
+    useEffect(() => {
+        const count = selectedTicket?.messages?.length || 0;
+        if (count !== prevMessagesCountRef.current) {
+            prevMessagesCountRef.current = count;
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [selectedTicket?.id, selectedTicket?.messages?.length]);
 
     // Order Handlers
     const handleConfirm = async (id: number) => {
@@ -47,6 +120,8 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
         const res = await confirmWebsiteOrder(id);
         if (!res.success) {
             alert(res.error || "Ошибка при подтверждении");
+        } else {
+            router.refresh();
         }
         setIsConfirming(null);
     };
@@ -58,14 +133,11 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
         const res = await cancelWebsiteOrder(id);
         if (!res.success) {
             alert(res.error || "Ошибка при отмене");
+        } else {
+            router.refresh();
         }
         setIsCancelling(null);
     };
-
-
-
-    // Ticket Handlers
-    const selectedTicket = tickets?.find(t => t.id === selectedTicketId);
 
     const handleReply = async () => {
         if (!replyContent.trim() || !selectedTicketId) return;
@@ -77,6 +149,7 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                 alert(res.error);
             } else {
                 setReplyContent("");
+                router.refresh();
             }
         } catch (e) {
             alert("Ошибка при отправке");
@@ -94,6 +167,8 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
             const res = await closeTicket(selectedTicketId);
             if (res.error) {
                 alert(res.error);
+            } else {
+                router.refresh();
             }
         } catch (e) {
             alert("Ошибка");
@@ -104,37 +179,48 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
 
     return (
         <div className="space-y-6">
-            {/* Tabs */}
-            <div className="flex border-b border-gray-200 bg-white rounded-t-lg px-4 pt-4 shadow-sm">
+            {/* Tabs + Refresh Button */}
+            <div className="flex items-center justify-between border-b border-gray-200 bg-white rounded-t-lg px-4 pt-3 shadow-sm">
+                <div className="flex">
+                    <button
+                        onClick={() => handleTabChange("orders")}
+                        className={`px-6 py-3 font-semibold text-sm transition-colors border-b-2 ${
+                            activeTab === "orders" 
+                                ? "border-yellow-400 text-yellow-600" 
+                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        }`}
+                    >
+                        Заказы с сайта
+                        {orders?.length > 0 && (
+                            <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-yellow-800 bg-yellow-100 rounded-full">
+                                {orders.length}
+                            </span>
+                        )}
+                    </button>
+                    <button
+                        onClick={() => handleTabChange("tickets")}
+                        className={`px-6 py-3 font-semibold text-sm transition-colors border-b-2 ${
+                            activeTab === "tickets" 
+                                ? "border-purple-500 text-purple-600" 
+                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        }`}
+                    >
+                        Сообщения
+                        {tickets?.filter(t => t.status === "OPEN").length > 0 && (
+                            <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-purple-500 rounded-full">
+                                {tickets.filter(t => t.status === "OPEN").length}
+                            </span>
+                        )}
+                    </button>
+                </div>
+
                 <button
-                    onClick={() => setActiveTab("orders")}
-                    className={`px-6 py-3 font-semibold text-sm transition-colors border-b-2 ${
-                        activeTab === "orders" 
-                            ? "border-yellow-400 text-yellow-600" 
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
+                    onClick={handleManualRefresh}
+                    className="mb-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    title="Обновить данные без закрытия открытого чата"
                 >
-                    Заказы с сайта
-                    {orders?.length > 0 && (
-                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-yellow-800 bg-yellow-100 rounded-full">
-                            {orders.length}
-                        </span>
-                    )}
-                </button>
-                <button
-                    onClick={() => setActiveTab("tickets")}
-                    className={`px-6 py-3 font-semibold text-sm transition-colors border-b-2 ${
-                        activeTab === "tickets" 
-                            ? "border-purple-500 text-purple-600" 
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
-                >
-                    Сообщения
-                    {tickets?.filter(t => t.status === "OPEN").length > 0 && (
-                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-purple-500 rounded-full">
-                            {tickets.filter(t => t.status === "OPEN").length}
-                        </span>
-                    )}
+                    <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-purple-600" : ""}`} />
+                    <span>Обновить</span>
                 </button>
             </div>
 
@@ -205,7 +291,6 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                     </div>
 
                                     <div className="p-4 border-t border-gray-100 bg-gray-50 flex gap-2 mt-auto">
-
                                         <button 
                                             onClick={() => handleCancel(order.id)}
                                             disabled={isCancelling === order.id || isConfirming === order.id}
@@ -247,7 +332,7 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                 <div className="flex h-[75vh] bg-white rounded-lg shadow border overflow-hidden">
                     {/* Sidebar List */}
                     <div className="w-1/4 border-r flex flex-col bg-gray-50 shrink-0">
-                        <div className="p-4 border-b bg-white">
+                        <div className="p-4 border-b bg-white flex justify-between items-center">
                             <h2 className="font-bold text-lg flex items-center gap-2">
                                 <MessageSquare className="w-5 h-5 text-purple-600" />
                                 Сообщения ({tickets?.length || 0})
@@ -257,17 +342,19 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                             {tickets?.map(ticket => (
                                 <div 
                                     key={ticket.id} 
-                                    onClick={() => setSelectedTicketId(ticket.id)}
+                                    onClick={() => handleSelectTicket(ticket.id)}
                                     className={`p-4 border-b cursor-pointer transition-colors ${selectedTicketId === ticket.id ? 'bg-purple-50 border-l-4 border-l-purple-600' : 'hover:bg-gray-100 border-l-4 border-l-transparent'}`}
                                 >
                                     <div className="flex justify-between items-start mb-1">
-                                        <h3 className="font-semibold text-sm truncate pr-2">Чат с клиентом</h3>
+                                        <h3 className="font-semibold text-sm truncate pr-2">
+                                            {ticket.customer?.firstName || 'Клиент'}
+                                        </h3>
                                         <span className={`text-xs px-2 py-0.5 rounded font-bold ${ticket.status === 'OPEN' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'}`}>
                                             {ticket.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
                                         </span>
                                     </div>
                                     <div className="text-xs text-gray-500 flex justify-between">
-                                        <span>{ticket.customer?.firstName || ''} {ticket.customer?.phone}</span>
+                                        <span>{ticket.customer?.phone}</span>
                                         <span>{format(new Date(ticket.updatedAt), "dd.MM HH:mm")}</span>
                                     </div>
                                 </div>
@@ -288,10 +375,21 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                 <div className="p-4 border-b flex justify-between items-center bg-white shadow-sm z-10">
                                     <div>
                                         <h2 className="font-bold text-lg">Жанна (Вы) и {selectedTicket.customer?.firstName || 'Клиент'}</h2>
-                                        <div className="text-sm text-gray-500">
-                                            Клиент: {selectedTicket.customer?.firstName || 'Имя не указано'} ({selectedTicket.customer?.phone})
+                                        <div className="text-sm text-gray-500 flex items-center gap-2">
+                                            <span>Клиент: {selectedTicket.customer?.firstName || 'Имя не указано'} ({selectedTicket.customer?.phone})</span>
+                                            <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                                Автообновление
+                                            </span>
                                         </div>
                                     </div>
+                                    <button
+                                        onClick={handleManualRefresh}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors"
+                                    >
+                                        <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+                                        <span>Обновить чат</span>
+                                    </button>
                                 </div>
 
                                 {/* Messages List */}
@@ -307,10 +405,10 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                                     <div className={`text-xs opacity-50 mb-1 ${isCustomer ? '' : 'text-right'}`}>
                                                         {format(new Date(msg.createdAt), "dd.MM.yyyy HH:mm")}
                                                     </div>
-                                                    <div className="whitespace-pre-wrap text-sm leading-relaxed break-words">
+                                                    <div className="whitespace-pre-wrap text-base leading-relaxed break-words">
                                                         {String(msg.text || '').split(/(https?:\/\/[^\s\]]+)/g).map((part, i) =>
                                                             /^https?:\/\//.test(part) ? (
-                                                                <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="inline-block mt-1 px-2.5 py-1 bg-blue-600 text-white text-xs font-semibold rounded hover:bg-blue-700 underline">
+                                                                <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="inline-block mt-1 px-3 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 underline">
                                                                     📄 Открыть прикрепленный чек / файл
                                                                 </a>
                                                             ) : (
@@ -322,6 +420,7 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                             </div>
                                         );
                                     })}
+                                    <div ref={messagesEndRef} />
                                 </div>
 
                                 {/* Reply Box */}
@@ -329,7 +428,13 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                     <textarea 
                                         value={replyContent}
                                         onChange={e => setReplyContent(e.target.value)}
-                                        placeholder="Написать ответ клиенту..."
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handleReply();
+                                            }
+                                        }}
+                                        placeholder="Написать ответ клиенту... (Enter для отправки)"
                                         className="w-full border rounded-lg p-3.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                                         rows={3}
                                     />
@@ -337,7 +442,7 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                         <button 
                                             onClick={handleReply}
                                             disabled={isSubmittingTicket || !replyContent.trim()}
-                                            className="bg-purple-600 text-white px-4 py-2 rounded font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                                            className="bg-purple-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors"
                                         >
                                             {isSubmittingTicket ? "Отправка..." : "Отправить"}
                                         </button>
@@ -386,7 +491,20 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                                     </div>
                                                 ))}
                                             </div>
-                                            <div className="text-right font-bold pt-2 border-t text-gray-900">
+                                            {order.comment && (
+                                                <div className="mt-2 pt-2 border-t text-xs text-gray-600 break-words">
+                                                    {String(order.comment).split(/(https?:\/\/[^\s\]]+)/g).map((part, i) =>
+                                                        /^https?:\/\//.test(part) ? (
+                                                            <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="inline-block mt-1 px-2 py-1 bg-green-600 text-white font-semibold rounded hover:bg-green-700 underline">
+                                                                📎 Открыть чек
+                                                            </a>
+                                                        ) : (
+                                                            <span key={i}>{part}</span>
+                                                        )
+                                                    )}
+                                                </div>
+                                            )}
+                                            <div className="text-right font-bold pt-2 border-t mt-2 text-gray-900">
                                                 {order.totalAmount.toLocaleString()} ₸
                                             </div>
                                         </div>

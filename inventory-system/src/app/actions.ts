@@ -1438,6 +1438,7 @@ export async function replyToTicket(ticketId: string, content: string) {
         });
 
         revalidatePath("/tickets");
+        revalidatePath("/website-orders");
         return { success: true };
     } catch (e: any) {
         return { error: "Ошибка при отправке сообщения" };
@@ -1451,6 +1452,7 @@ export async function closeTicket(ticketId: string) {
             data: { status: "CLOSED" }
         });
         revalidatePath("/tickets");
+        revalidatePath("/website-orders");
         return { success: true };
     } catch (e: any) {
         return { error: "Ошибка при закрытии тикета" };
