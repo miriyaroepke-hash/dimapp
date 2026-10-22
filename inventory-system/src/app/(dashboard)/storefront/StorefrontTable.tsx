@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { deleteStorefrontProduct, bulkAssignCategory, removeCategoryFromProduct } from "@/app/actions";
-import { Trash2, ExternalLink, Tag, CheckSquare, Square, Edit2, FolderPlus } from "lucide-react";
+import { Trash2, Tag, CheckSquare, Square, Edit2, FolderPlus, Plus } from "lucide-react";
 import DiscountStorefrontModal from "./DiscountStorefrontModal";
 import EditStorefrontModal from "./EditStorefrontModal";
 
@@ -27,23 +27,30 @@ interface StorefrontProduct {
     categories: string[];
 }
 
-export default function StorefrontTable({ products, initialCategories }: { products: StorefrontProduct[]; initialCategories?: { id: string; label: string }[] }) {
+const FALLBACK_CATEGORIES = [
+    { id: 'new', label: 'Новинки' },
+    { id: 'dresses', label: 'Платья' },
+    { id: 'pants', label: 'Брюки' },
+    { id: 'shirts', label: 'Рубашки' },
+    { id: 'skirts', label: 'Юбки' },
+    { id: 'suits', label: 'Костюмы' },
+    { id: 'sale', label: 'Скидки (SALE)' },
+];
+
+export default function StorefrontTable({ products, initialCategories }: { products: StorefrontProduct[]; initialCategories?: { id: string; label: string; isHidden?: boolean }[] }) {
     const [isDeleting, setIsDeleting] = useState<number | null>(null);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<StorefrontProduct | null>(null);
     const [bulkCategory, setBulkCategory] = useState("");
     const [isAssigning, setIsAssigning] = useState(false);
+    const [loadingProductCat, setLoadingProductCat] = useState<string | null>(null);
 
-    const CATEGORIES = [
-        { id: 'new', label: 'Новинки' },
-        { id: 'dresses', label: 'Платья' },
-        { id: 'pants', label: 'Брюки' },
-        { id: 'shirts', label: 'Рубашки' },
-        { id: 'skirts', label: 'Юбки' },
-        { id: 'suits', label: 'Костюмы' },
-        { id: 'sale', label: 'Скидки (SALE)' },
-    ];
+    const CATEGORIES = (initialCategories && initialCategories.length > 0)
+        ? initialCategories
+            .filter(c => c.id !== 'preorder')
+            .map(c => ({ id: c.id, label: c.id === 'sale' ? 'Скидки (SALE)' : c.label }))
+        : FALLBACK_CATEGORIES;
 
     const toggleSelectAll = () => {
         if (selectedIds.length === products.length) {
@@ -87,12 +94,29 @@ export default function StorefrontTable({ products, initialCategories }: { produ
         }
     };
 
+    const handleQuickToggleCategory = async (product: StorefrontProduct, catId: string) => {
+        const key = `${product.id}-${catId}`;
+        setLoadingProductCat(key);
+        try {
+            const hasCat = (product.categories || []).includes(catId);
+            if (hasCat) {
+                await removeCategoryFromProduct(product.id, catId);
+            } else {
+                await bulkAssignCategory([product.id], catId);
+            }
+        } catch (e) {
+            alert("Ошибка при изменении категории");
+        } finally {
+            setLoadingProductCat(null);
+        }
+    };
+
     return (
         <div className="space-y-4">
             {/* Bulk Actions Toolbar */}
             {selectedIds.length > 0 && (
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-blue-100 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-                    <div className="flex items-center gap-4">
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-blue-100 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex flex-wrap items-center gap-4">
                         <span className="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
                             Выбрано: {selectedIds.length}
                         </span>
@@ -134,7 +158,7 @@ export default function StorefrontTable({ products, initialCategories }: { produ
                 <table className="w-full text-left">
                     <thead className="bg-gray-50 text-gray-500 uppercase text-xs border-b">
                         <tr>
-                            <th className="px-6 py-3 w-10">
+                            <th className="px-4 py-3 w-10">
                                 <button onClick={toggleSelectAll} className="text-gray-400 hover:text-gray-600">
                                     {selectedIds.length === products.length && products.length > 0 ? (
                                         <CheckSquare className="w-5 h-5 text-blue-600" />
@@ -143,25 +167,25 @@ export default function StorefrontTable({ products, initialCategories }: { produ
                                     )}
                                 </button>
                             </th>
-                            <th className="px-6 py-3 w-20">ID</th>
-                            <th className="px-6 py-3 w-24">Фото</th>
-                            <th className="px-6 py-3">Общее название витрины</th>
-                            <th className="px-6 py-3">Привязанные размеры</th>
-                            <th className="px-6 py-3 w-24 text-center">Действия</th>
+                            <th className="px-4 py-3 w-16">ID</th>
+                            <th className="px-4 py-3 w-20">Фото</th>
+                            <th className="px-4 py-3">Товар и категории (признак)</th>
+                            <th className="px-4 py-3">Привязанные размеры</th>
+                            <th className="px-4 py-3 w-24 text-center">Действия</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                         {products.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
+                                <td colSpan={6} className="px-6 py-8 text-center text-gray-400">
                                     Пока нет объединенных карточек. Создайте их во вкладке "Склад".
                                 </td>
                             </tr>
                         ) : null}
 
                         {products.map(p => (
-                            <tr key={p.id} className="hover:bg-blue-50/50 transition-colors">
-                                <td className="px-6 py-4">
+                            <tr key={p.id} className="hover:bg-blue-50/30 transition-colors">
+                                <td className="px-4 py-4 align-top">
                                     <button onClick={() => toggleSelect(p.id)} className="text-gray-400 hover:text-gray-600">
                                         {selectedIds.includes(p.id) ? (
                                             <CheckSquare className="w-5 h-5 text-blue-600" />
@@ -170,8 +194,8 @@ export default function StorefrontTable({ products, initialCategories }: { produ
                                         )}
                                     </button>
                                 </td>
-                                <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">#{p.id}</td>
-                                <td className="px-6 py-4">
+                                <td className="px-4 py-4 text-sm whitespace-nowrap text-gray-500 align-top">#{p.id}</td>
+                                <td className="px-4 py-4 align-top">
                                     {p.image ? (
                                         <div className="w-12 h-12 rounded overflow-hidden shadow border bg-gray-100">
                                             <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
@@ -182,8 +206,8 @@ export default function StorefrontTable({ products, initialCategories }: { produ
                                         </div>
                                     )}
                                 </td>
-                                <td className="px-6 py-4">
-                                    <div className="font-medium text-gray-900 flex items-center gap-2">
+                                <td className="px-4 py-4 align-top">
+                                    <div className="font-medium text-gray-900 flex flex-wrap items-center gap-2">
                                         {p.name}
                                         {p.discountPrice ? (
                                             <span className="text-xs font-bold text-white bg-red-500 px-2 py-0.5 rounded shadow-sm">
@@ -191,23 +215,46 @@ export default function StorefrontTable({ products, initialCategories }: { produ
                                             </span>
                                         ) : null}
                                     </div>
-                                    <div className="text-sm text-gray-500 mt-1 flex items-center gap-1">
+                                    <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                                         <span className={`inline-block w-2 h-2 rounded-full ${p.isActive ? 'bg-green-500' : 'bg-gray-300'}`}></span>
                                         {p.isActive ? "Отображается на сайте" : "Скрыто"}
                                     </div>
-                                    <div className="mt-2 flex flex-wrap gap-1">
-                                        {(p.categories || []).map(cat => {
-                                            const label = CATEGORIES.find(c => c.id === cat)?.label || cat;
+
+                                    {/* Quick Category Buttons (Платья, Брюки, Рубашки и т.д.) */}
+                                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                                        {CATEGORIES.map(cat => {
+                                            const isAssigned = (p.categories || []).includes(cat.id);
+                                            const isBusy = loadingProductCat === `${p.id}-${cat.id}`;
                                             return (
-                                                <span key={cat} className="inline-flex items-center gap-1 text-xs bg-indigo-50 text-indigo-600 border border-indigo-100 px-2 py-0.5 rounded">
-                                                    {label}
-                                                    <button type="button" onClick={() => removeCategoryFromProduct(p.id, cat)} className="text-indigo-400 hover:text-red-600 font-bold ml-0.5" title="Убрать из категории">×</button>
-                                                </span>
+                                                <button
+                                                    key={cat.id}
+                                                    type="button"
+                                                    disabled={isBusy}
+                                                    onClick={() => handleQuickToggleCategory(p, cat.id)}
+                                                    title={isAssigned ? `Убрать из категории «${cat.label}»` : `Добавить в категорию «${cat.label}»`}
+                                                    className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border transition-all ${
+                                                        isAssigned
+                                                            ? "bg-indigo-600 text-white border-indigo-600 font-semibold shadow-sm hover:bg-indigo-700"
+                                                            : "bg-gray-50 text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50"
+                                                    } ${isBusy ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
+                                                >
+                                                    {isAssigned ? (
+                                                        <>
+                                                            <span>✓ {cat.label}</span>
+                                                            <span className="ml-0.5 opacity-80">×</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Plus className="w-3 h-3 opacity-60" />
+                                                            <span>{cat.label}</span>
+                                                        </>
+                                                    )}
+                                                </button>
                                             );
                                         })}
                                     </div>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-4 py-4 align-top">
                                     <div className="flex flex-wrap gap-1">
                                         {p.products.length === 0 ? (
                                             <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded border border-red-100">Нет привязанных</span>
@@ -221,22 +268,24 @@ export default function StorefrontTable({ products, initialCategories }: { produ
                                         )}
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 text-center flex items-center justify-center gap-3">
-                                    <button
-                                        onClick={() => setEditingProduct(p)}
-                                        className="text-gray-400 hover:text-blue-600 transition"
-                                        title="Редактировать"
-                                    >
-                                        <Edit2 className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(p.id)}
-                                        disabled={isDeleting === p.id}
-                                        className="text-gray-400 hover:text-red-600 transition"
-                                        title="Удалить карточку"
-                                    >
-                                        <Trash2 className="w-5 h-5" />
-                                    </button>
+                                <td className="px-4 py-4 text-center align-top">
+                                    <div className="flex items-center justify-center gap-3">
+                                        <button
+                                            onClick={() => setEditingProduct(p)}
+                                            className="text-gray-400 hover:text-blue-600 transition"
+                                            title="Редактировать"
+                                        >
+                                            <Edit2 className="w-5 h-5" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(p.id)}
+                                            disabled={isDeleting === p.id}
+                                            className="text-gray-400 hover:text-red-600 transition"
+                                            title="Удалить карточку"
+                                        >
+                                            <Trash2 className="w-5 h-5" />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -257,6 +306,7 @@ export default function StorefrontTable({ products, initialCategories }: { produ
             {editingProduct && (
                 <EditStorefrontModal
                     product={editingProduct}
+                    categoriesList={CATEGORIES}
                     onClose={() => setEditingProduct(null)}
                     onSuccess={() => setEditingProduct(null)}
                 />

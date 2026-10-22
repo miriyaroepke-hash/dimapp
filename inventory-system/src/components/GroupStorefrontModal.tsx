@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createStorefrontProduct, getStorefrontProducts, addProductsToStorefront } from "@/app/actions";
-import { Loader2, X, Plus, LogIn } from "lucide-react";
+import { createStorefrontProduct, getStorefrontProducts, addProductsToStorefront, getCategoryContents } from "@/app/actions";
+import { Loader2, X, Plus, LogIn, Check } from "lucide-react";
 
 interface Product {
     id: number;
@@ -17,29 +17,54 @@ interface Props {
     onSuccess: () => void;
 }
 
+const DEFAULT_CATS = [
+    { id: 'new', label: 'Новинки' },
+    { id: 'dresses', label: 'Платья' },
+    { id: 'pants', label: 'Брюки' },
+    { id: 'shirts', label: 'Рубашки' },
+    { id: 'skirts', label: 'Юбки' },
+    { id: 'suits', label: 'Костюмы' },
+    { id: 'sale', label: 'Скидки (SALE)' },
+];
+
 export default function GroupStorefrontModal({ products, selectedIds, onClose, onSuccess }: Props) {
     const selectedProducts = products.filter(p => selectedIds.includes(p.id));
     const firstProduct = selectedProducts[0];
     
-    // Auto-clean name: just take the name without size roughly (if there's a common pattern, otherwise just the first name)
     let defaultName = firstProduct?.name || "";
-    // Often sizes are appended like "Dress M" or "Dress (M)", we leave it to the user to clean it
     
     const [name, setName] = useState(defaultName);
     const [image, setImage] = useState(firstProduct?.image || "");
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [categoriesList, setCategoriesList] = useState<{ id: string; label: string }[]>(DEFAULT_CATS);
     const [isLoading, setIsLoading] = useState(false);
     
-    // Existing selection mode
     const [mode, setMode] = useState<"NEW" | "EXISTING">("NEW");
     const [storefronts, setStorefronts] = useState<any[]>([]);
     const [selectedStorefrontId, setSelectedStorefrontId] = useState<number | null>(null);
 
     useEffect(() => {
         getStorefrontProducts().then(sf => setStorefronts(sf));
+        getCategoryContents().then(contents => {
+            const raw = contents?.['_categories_config_']?.text_ru;
+            if (raw) {
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        setCategoriesList(parsed.filter((c: any) => c.id !== 'preorder').map((c: any) => ({ id: c.id, label: c.label })));
+                    }
+                } catch (e) {}
+            }
+        });
     }, []);
     
-    // Provide image choices from selected items (unique only)
     const availableImages = Array.from(new Set(selectedProducts.map(p => p.image).filter(Boolean))) as string[];
+
+    const toggleCategory = (catId: string) => {
+        setSelectedCategories(prev =>
+            prev.includes(catId) ? prev.filter(c => c !== catId) : [...prev, catId]
+        );
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -52,7 +77,8 @@ export default function GroupStorefrontModal({ products, selectedIds, onClose, o
                 await createStorefrontProduct({
                     name: name.trim(),
                     image: image || undefined,
-                    productIds: selectedIds
+                    productIds: selectedIds,
+                    categories: selectedCategories
                 });
             } else {
                 if (!selectedStorefrontId) return alert("Выберите существующую карточку");
@@ -69,15 +95,15 @@ export default function GroupStorefrontModal({ products, selectedIds, onClose, o
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden animate-fade-in">
-                <div className="flex justify-between items-center p-4 border-b">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
+                <div className="flex justify-between items-center p-4 border-b flex-shrink-0">
                     <h2 className="text-xl font-bold">Создать карточку Витрины</h2>
                     <button onClick={onClose} className="text-gray-500 hover:text-black">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                <form onSubmit={handleSubmit} className="p-4 space-y-4 overflow-y-auto">
                     <div className="bg-blue-50 p-3 rounded border border-blue-100 mb-4 text-sm text-blue-800">
                         Выбрано товаров (размеров): <strong>{selectedIds.length}</strong>. 
                         Они будут привязаны к этой единой карточке на витрине.
@@ -118,6 +144,32 @@ export default function GroupStorefrontModal({ products, selectedIds, onClose, o
                                 <p className="text-xs text-gray-500 mt-1">
                                     Рекомендуем удалить размер из названия (он будет отображаться при выборе).
                                 </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                    Признак / Категория на сайте (Платья, Брюки и т.д.)
+                                </label>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {categoriesList.map(cat => {
+                                        const isSelected = selectedCategories.includes(cat.id);
+                                        return (
+                                            <button
+                                                key={cat.id}
+                                                type="button"
+                                                onClick={() => toggleCategory(cat.id)}
+                                                className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 transition-all ${
+                                                    isSelected
+                                                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                                                        : "bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100"
+                                                }`}
+                                            >
+                                                {isSelected && <Check className="w-3 h-3" />}
+                                                {cat.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
 
                             <div>

@@ -1222,12 +1222,13 @@ export async function updateSiteContent(data: any) {
 // STOREFRONT PRODUCT GROUPING
 // =========================
 
-export async function createStorefrontProduct(data: { name: string; image: string | undefined; productIds: number[] }) {
+export async function createStorefrontProduct(data: { name: string; image: string | undefined; productIds: number[]; categories?: string[] }) {
     try {
         const sfProduct = await prisma.storefrontProduct.create({
             data: {
                 name: data.name,
-                image: data.image
+                image: data.image,
+                categories: data.categories || []
             }
         });
 

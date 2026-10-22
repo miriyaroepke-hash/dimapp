@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, X, Upload } from "lucide-react";
+import { Loader2, X, Upload, Check } from "lucide-react";
 import { updateStorefrontProduct } from "@/app/actions";
 
 interface StorefrontProduct {
@@ -11,10 +11,12 @@ interface StorefrontProduct {
     image: string | null;
     images: string[];
     video: string | null;
+    categories?: string[];
 }
 
 interface Props {
     product: StorefrontProduct;
+    categoriesList: { id: string; label: string }[];
     onClose: () => void;
     onSuccess: () => void;
 }
@@ -68,19 +70,25 @@ const compressImage = (file: File): Promise<Blob> => {
     });
 };
 
-export default function EditStorefrontModal({ product, onClose, onSuccess }: Props) {
+export default function EditStorefrontModal({ product, categoriesList, onClose, onSuccess }: Props) {
     const [name, setName] = useState(product.name);
     const [description, setDescription] = useState(product.description || "");
     const [video, setVideo] = useState(product.video || "");
     const [images, setImages] = useState<string[]>(product.images?.length > 0 ? product.images : (product.image ? [product.image] : []));
+    const [selectedCategories, setSelectedCategories] = useState<string[]>(product.categories || []);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+
+    const toggleCategory = (catId: string) => {
+        setSelectedCategories(prev =>
+            prev.includes(catId) ? prev.filter(c => c !== catId) : [...prev, catId]
+        );
+    };
 
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Local preview skipped for now during multi-image upload
         setUploadingImage(true);
 
         try {
@@ -132,7 +140,8 @@ export default function EditStorefrontModal({ product, onClose, onSuccess }: Pro
                 description: description.trim() || null,
                 video: video.trim() || null,
                 images: images,
-                image: images.length > 0 ? images[0] : null // Fallback for backwards compatibility
+                image: images.length > 0 ? images[0] : null,
+                categories: selectedCategories
             });
             if (res.success) {
                 onSuccess();
@@ -148,15 +157,15 @@ export default function EditStorefrontModal({ product, onClose, onSuccess }: Pro
 
     return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in">
-                <div className="flex justify-between items-center p-4 border-b bg-gray-50">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
+                <div className="flex justify-between items-center p-4 border-b bg-gray-50 flex-shrink-0">
                     <h2 className="text-xl font-bold">Редактировать Витрину</h2>
                     <button onClick={onClose} className="text-gray-500 hover:text-black">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
                 
-                <div className="p-6 space-y-5">
+                <div className="p-6 space-y-5 overflow-y-auto">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Название на сайте</label>
                         <input
@@ -165,6 +174,35 @@ export default function EditStorefrontModal({ product, onClose, onSuccess }: Pro
                             onChange={(e) => setName(e.target.value)}
                             className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500"
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Категории на сайте (Платья, Брюки и т.д.)
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {categoriesList.map(cat => {
+                                const isSelected = selectedCategories.includes(cat.id);
+                                return (
+                                    <button
+                                        key={cat.id}
+                                        type="button"
+                                        onClick={() => toggleCategory(cat.id)}
+                                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border flex items-center gap-1.5 transition-all ${
+                                            isSelected
+                                                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                                                : "bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100"
+                                        }`}
+                                    >
+                                        {isSelected && <Check className="w-3.5 h-3.5" />}
+                                        {cat.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1.5">
+                            Выберите одну или несколько категорий, чтобы товар отображался в них на сайте и в телефоне.
+                        </p>
                     </div>
 
                     <div>
