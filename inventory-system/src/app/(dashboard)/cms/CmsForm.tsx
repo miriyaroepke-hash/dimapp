@@ -1,21 +1,38 @@
 "use client";
 
 import { useState } from "react";
-import { updateSiteContent, saveCategoryContent } from "@/app/actions";
-import { Check, Loader2, ExternalLink, Image } from "lucide-react";
+import { updateSiteContent, saveCategoryContent, saveCategoriesConfig } from "@/app/actions";
+import { Check, Loader2, ExternalLink, Image, Eye, EyeOff, Trash2, Plus } from "lucide-react";
 
 // Secret token to activate admin mode on storefront (stored in localStorage on vitrina)
 const ADMIN_TOKEN = "dimmiani_admin_2024";
 
-const CATEGORIES = [
-    { id: 'new', label: 'Новинки' },
-    { id: 'dresses', label: 'Платья' },
-    { id: 'pants', label: 'Брюки' },
-    { id: 'shirts', label: 'Рубашки' },
-    { id: 'skirts', label: 'Юбки' },
-    { id: 'suits', label: 'Костюмы' },
-    { id: 'sale', label: 'Скидки (SALE)' },
+export interface MenuCategoryItem {
+    id: string;
+    label: string;
+    label_kz?: string;
+    isHidden?: boolean;
+    href?: string;
+    color?: string;
+}
+
+export const DEFAULT_CATEGORIES: MenuCategoryItem[] = [
+    { id: 'new', label: 'Новинки', label_kz: 'Жаңалықтар', isHidden: false, href: '/products' },
+    { id: 'dresses', label: 'Платья', label_kz: 'Көйлектер', isHidden: false },
+    { id: 'pants', label: 'Брюки', label_kz: 'Шалбарлар', isHidden: false },
+    { id: 'shirts', label: 'Рубашки', label_kz: 'Жейделер', isHidden: false },
+    { id: 'skirts', label: 'Юбки', label_kz: 'Белдемшелер', isHidden: false },
+    { id: 'suits', label: 'Костюмы', label_kz: 'Костюмдер', isHidden: false },
+    { id: 'sale', label: 'SALE%', label_kz: 'SALE%', isHidden: false, href: '/sale', color: '#ff3b30' },
+    { id: 'preorder', label: 'Предзаказ', label_kz: 'Алдын ала тапсырыс', isHidden: false, href: '/preorder', color: '#8b5cf6' },
 ];
+
+function slugifyRu(str: string): string {
+    const map: Record<string, string> = {
+        а:'a', б:'b', в:'v', г:'g', д:'d', е:'e', ё:'yo', ж:'zh', з:'z', и:'i', й:'y', к:'k', л:'l', м:'m', н:'n', о:'o', п:'p', р:'r', с:'s', т:'t', у:'u', ф:'f', х:'kh', ц:'ts', ч:'ch', ш:'sh', щ:'shch', ъ:'', ы:'y', ь:'', э:'e', ю:'yu', я:'ya'
+    };
+    return str.toLowerCase().trim().split('').map(ch => map[ch] !== undefined ? map[ch] : ch).join('').replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || ('cat_' + Date.now());
+}
 
 export default function CmsForm({ initialData, initialCategories }: { initialData: any, initialCategories: any }) {
     const [isLoading, setIsLoading] = useState(false);
@@ -56,6 +73,64 @@ export default function CmsForm({ initialData, initialCategories }: { initialDat
         show_blog: initialData?.show_blog ?? false,
     });
     const [categoryContents, setCategoryContents] = useState<Record<string, any>>(initialCategories || {});
+    const [menuCategories, setMenuCategories] = useState<MenuCategoryItem[]>(() => {
+        const raw = initialCategories?.['_categories_config_']?.text_ru;
+        if (raw) {
+            try {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            } catch (e) {}
+        }
+        return DEFAULT_CATEGORIES;
+    });
+    const [newCatLabelRu, setNewCatLabelRu] = useState("");
+    const [newCatLabelKz, setNewCatLabelKz] = useState("");
+    const [savingMenuCats, setSavingMenuCats] = useState(false);
+
+    const persistMenuCategories = async (updatedList: MenuCategoryItem[]) => {
+        setMenuCategories(updatedList);
+        setSavingMenuCats(true);
+        try {
+            const res = await saveCategoriesConfig(updatedList);
+            if (!res.success) alert("Ошибка сохранения меню категорий: " + res.error);
+        } catch (e) {
+            alert("Ошибка сохранения меню категорий");
+        } finally {
+            setSavingMenuCats(false);
+        }
+    };
+
+    const handleAddMenuCategory = async () => {
+        if (!newCatLabelRu.trim()) {
+            alert("Введите название новой категории");
+            return;
+        }
+        let id = slugifyRu(newCatLabelRu);
+        if (menuCategories.some(c => c.id === id)) {
+            id = id + "_" + Math.floor(Math.random() * 1000);
+        }
+        const newItem: MenuCategoryItem = {
+            id,
+            label: newCatLabelRu.trim(),
+            label_kz: newCatLabelKz.trim() || newCatLabelRu.trim(),
+            isHidden: false
+        };
+        const updated = [...menuCategories, newItem];
+        setNewCatLabelRu("");
+        setNewCatLabelKz("");
+        await persistMenuCategories(updated);
+    };
+
+    const handleToggleCategoryVisibility = async (id: string) => {
+        const updated = menuCategories.map(c => c.id === id ? { ...c, isHidden: !c.isHidden } : c);
+        await persistMenuCategories(updated);
+    };
+
+    const handleDeleteMenuCategory = async (id: string, label: string) => {
+        if (!confirm(`Удалить категорию «${label}» из меню?`)) return;
+        const updated = menuCategories.filter(c => c.id !== id);
+        await persistMenuCategories(updated);
+    };
     const [uploadingField, setUploadingField] = useState<string | null>(null);
     const [translatingField, setTranslatingField] = useState<string | null>(null);
 
@@ -264,7 +339,7 @@ export default function CmsForm({ initialData, initialCategories }: { initialDat
         }
     };
 
-    const vitrinaAdminUrl = `https://dimmiani.kz/?adminToken=${ADMIN_TOKEN}`;
+    const vitrinaAdminUrl = `https://dimmiani.com/?adminToken=${ADMIN_TOKEN}`;
 
     // Helper: upload button
     const UploadBtn = ({ field, accept, label }: { field: string; accept: string; label: string }) => (
@@ -584,15 +659,108 @@ export default function CmsForm({ initialData, initialCategories }: { initialDat
             </div>
 
             {/* КОНТЕНТ КАТЕГОРИЙ */}
-            <div className="space-y-4 bg-white p-6 rounded-lg shadow-sm border">
-                <h2 className="text-xl font-semibold border-b pb-2">Категории каталога</h2>
-                <p className="text-sm text-gray-500 mb-4">Настройте баннер и описание для каждой вкладки в каталоге.</p>
-                <div className="space-y-8">
-                    {CATEGORIES.map(cat => {
+            <div className="space-y-6 bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3">
+                    <div>
+                        <h2 className="text-xl font-semibold">Категории каталога и Меню сайта</h2>
+                        <p className="text-sm text-gray-500 mt-1">Добавляйте новые разделы в меню, скрывайте неактуальные или удаляйте их, а также настраивайте баннеры.</p>
+                    </div>
+                    {savingMenuCats && (
+                        <span className="text-xs text-blue-600 flex items-center gap-1 font-medium">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Сохранение меню...
+                        </span>
+                    )}
+                </div>
+
+                {/* Форма добавления новой категории */}
+                <div className="bg-blue-50/60 border border-blue-200 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-1.5">
+                        <Plus className="w-4 h-4" /> Добавить новую категорию в меню
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Название (RU) *</label>
+                            <input
+                                type="text"
+                                placeholder="Например: Жакеты"
+                                value={newCatLabelRu}
+                                onChange={e => setNewCatLabelRu(e.target.value)}
+                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Название (KZ)</label>
+                            <input
+                                type="text"
+                                placeholder="Например: Жакеттер"
+                                value={newCatLabelKz}
+                                onChange={e => setNewCatLabelKz(e.target.value)}
+                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleAddMenuCategory}
+                            disabled={savingMenuCats}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        >
+                            <Plus className="w-4 h-4" /> Добавить в меню
+                        </button>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    {menuCategories.map(cat => {
                         const content = categoryContents[cat.id] || {};
                         return (
-                            <div key={cat.id} className="border p-4 rounded-lg bg-gray-50/50">
-                                <h3 className="font-semibold text-lg mb-3">{cat.label}</h3>
+                            <div key={cat.id} className={`border p-4 rounded-lg transition ${cat.isHidden ? 'bg-gray-100/80 border-gray-300 opacity-75' : 'bg-gray-50/50'}`}>
+                                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-gray-200">
+                                    <div className="flex items-center gap-2.5">
+                                        <h3 className="font-semibold text-lg">{cat.label}</h3>
+                                        {cat.label_kz && cat.label_kz !== cat.label && (
+                                            <span className="text-xs text-gray-500">({cat.label_kz})</span>
+                                        )}
+                                        <span className="text-xs font-mono text-gray-400 bg-white px-2 py-0.5 rounded border">id: {cat.id}</span>
+                                        {cat.isHidden ? (
+                                            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-gray-200 text-gray-700">
+                                                Скрыта на сайте
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-green-100 text-green-700">
+                                                Видна в меню
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleToggleCategoryVisibility(cat.id)}
+                                            disabled={savingMenuCats}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold border transition ${
+                                                cat.isHidden
+                                                    ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                                                    : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                            }`}
+                                        >
+                                            {cat.isHidden ? (
+                                                <><Eye className="w-3.5 h-3.5" /> Показать в меню</>
+                                            ) : (
+                                                <><EyeOff className="w-3.5 h-3.5" /> Скрыть из меню</>
+                                            )}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteMenuCategory(cat.id, cat.label)}
+                                            disabled={savingMenuCats}
+                                            className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" /> Удалить
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-3">
                                         <div>

@@ -1280,7 +1280,7 @@ export async function getStorefrontProducts() {
     }
 }
 
-export async function updateStorefrontProduct(id: number, data: { name?: string; image?: string | null; description?: string | null; video?: string | null; images?: string[] }) {
+export async function updateStorefrontProduct(id: number, data: { name?: string; image?: string | null; description?: string | null; video?: string | null; images?: string[]; categories?: string[] }) {
     try {
         await prisma.storefrontProduct.update({
             where: { id },
@@ -1570,5 +1570,41 @@ export async function bulkUpdatePreorder(ids: number[], isPreorder: boolean) {
     } catch (e) {
         console.error("Bulk update preorder error:", e);
         return { error: "Не удалось обновить статус предзаказа" };
+    }
+}
+
+
+export async function saveCategoriesConfig(categories: any[]) {
+    try {
+        const jsonStr = JSON.stringify(categories);
+        await prisma.categoryContent.upsert({
+            where: { id: '_categories_config_' },
+            update: { text_ru: jsonStr },
+            create: { id: '_categories_config_', text_ru: jsonStr }
+        });
+        revalidatePath('/cms');
+        revalidatePath('/storefront');
+        return { success: true };
+    } catch (e: any) {
+        console.error("Save categories config error:", e);
+        return { success: false, error: e.message };
+    }
+}
+
+export async function removeCategoryFromProduct(productId: number, categoryId: string) {
+    try {
+        const product = await prisma.storefrontProduct.findUnique({ where: { id: productId } });
+        if (product) {
+            const updated = (product.categories || []).filter((c: string) => c !== categoryId);
+            await prisma.storefrontProduct.update({
+                where: { id: productId },
+                data: { categories: updated }
+            });
+        }
+        revalidatePath('/storefront');
+        return { success: true };
+    } catch (e: any) {
+        console.error("Remove category error:", e);
+        return { success: false, error: e.message };
     }
 }

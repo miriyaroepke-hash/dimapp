@@ -1,8 +1,9 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { redirect } from "next/navigation";
-import { getStorefrontProducts } from "@/app/actions";
+import { getStorefrontProducts, getCategoryContents } from "@/app/actions";
 import StorefrontTable from "./StorefrontTable";
+import { DEFAULT_CATEGORIES } from "../cms/CmsForm";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,19 @@ export default async function StorefrontPage() {
         redirect("/inventory");
     }
 
-    const products = await getStorefrontProducts();
+    const [products, categoryContents] = await Promise.all([
+        getStorefrontProducts(),
+        getCategoryContents()
+    ]);
+
+    let categories = DEFAULT_CATEGORIES;
+    const rawConfig = categoryContents?.['_categories_config_']?.text_ru;
+    if (rawConfig) {
+        try {
+            const parsed = JSON.parse(rawConfig);
+            if (Array.isArray(parsed) && parsed.length > 0) categories = parsed;
+        } catch (e) {}
+    }
 
     return (
         <div className="p-6 max-w-7xl mx-auto animate-fade-in">
@@ -25,7 +38,7 @@ export default async function StorefrontPage() {
                 </div>
             </div>
 
-            <StorefrontTable products={products as any} />
+            <StorefrontTable products={products as any} initialCategories={categories} />
         </div>
     );
 }

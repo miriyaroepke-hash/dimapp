@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { deleteStorefrontProduct, bulkAssignCategory } from "@/app/actions";
+import { deleteStorefrontProduct, bulkAssignCategory, removeCategoryFromProduct } from "@/app/actions";
 import { Trash2, ExternalLink, Tag, CheckSquare, Square, Edit2, FolderPlus } from "lucide-react";
 import DiscountStorefrontModal from "./DiscountStorefrontModal";
 import EditStorefrontModal from "./EditStorefrontModal";
@@ -27,7 +27,7 @@ interface StorefrontProduct {
     categories: string[];
 }
 
-export default function StorefrontTable({ products }: { products: StorefrontProduct[] }) {
+export default function StorefrontTable({ products, initialCategories }: { products: StorefrontProduct[]; initialCategories?: { id: string; label: string }[] }) {
     const [isDeleting, setIsDeleting] = useState<number | null>(null);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
@@ -198,7 +198,12 @@ export default function StorefrontTable({ products }: { products: StorefrontProd
                                     <div className="mt-2 flex flex-wrap gap-1">
                                         {(p.categories || []).map(cat => {
                                             const label = CATEGORIES.find(c => c.id === cat)?.label || cat;
-                                            return <span key={cat} className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-100 px-1.5 py-0.5 rounded">{label}</span>;
+                                            return (
+                                                <span key={cat} className="inline-flex items-center gap-1 text-xs bg-indigo-50 text-indigo-600 border border-indigo-100 px-2 py-0.5 rounded">
+                                                    {label}
+                                                    <button type="button" onClick={() => removeCategoryFromProduct(p.id, cat)} className="text-indigo-400 hover:text-red-600 font-bold ml-0.5" title="Убрать из категории">×</button>
+                                                </span>
+                                            );
                                         })}
                                     </div>
                                 </td>
