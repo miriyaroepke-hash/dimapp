@@ -62,12 +62,7 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
         setIsCancelling(null);
     };
 
-    const handleWhatsApp = (phone: string | null, orderNumber: string) => {
-        if (!phone) return;
-        const cleanPhone = phone.replace(/\D/g, "");
-        const text = encodeURIComponent(`Здравствуйте! Это магазин Dimmiani. Пишу вам по поводу вашего заказа ${orderNumber}. `);
-        window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank");
-    };
+
 
     // Ticket Handlers
     const selectedTicket = tickets?.find(t => t.id === selectedTicketId);
@@ -210,14 +205,7 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                     </div>
 
                                     <div className="p-4 border-t border-gray-100 bg-gray-50 flex gap-2 mt-auto">
-                                        <button 
-                                            onClick={() => handleWhatsApp(order.clientPhone, order.orderNumber)}
-                                            className="flex-1 flex items-center justify-center gap-1 px-2 py-2 bg-[#25D366] text-white rounded-lg font-medium hover:bg-[#128C7E] transition-colors text-sm"
-                                            title="Написать в WhatsApp"
-                                        >
-                                            <MessageCircle className="w-4 h-4" />
-                                            WA
-                                        </button>
+
                                         <button 
                                             onClick={() => handleCancel(order.id)}
                                             disabled={isCancelling === order.id || isConfirming === order.id}
@@ -319,8 +307,16 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                                     <div className={`text-xs opacity-50 mb-1 ${isCustomer ? '' : 'text-right'}`}>
                                                         {format(new Date(msg.createdAt), "dd.MM.yyyy HH:mm")}
                                                     </div>
-                                                    <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                                                        {msg.text}
+                                                    <div className="whitespace-pre-wrap text-sm leading-relaxed break-words">
+                                                        {String(msg.text || '').split(/(https?:\/\/[^\s\]]+)/g).map((part, i) =>
+                                                            /^https?:\/\//.test(part) ? (
+                                                                <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="inline-block mt-1 px-2.5 py-1 bg-blue-600 text-white text-xs font-semibold rounded hover:bg-blue-700 underline">
+                                                                    📄 Открыть прикрепленный чек / файл
+                                                                </a>
+                                                            ) : (
+                                                                <span key={i}>{part}</span>
+                                                            )
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
