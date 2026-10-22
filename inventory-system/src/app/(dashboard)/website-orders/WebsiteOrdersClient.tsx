@@ -89,8 +89,10 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
     // Auto-refresh in background every 4 seconds so new client messages/receipts appear automatically
     useEffect(() => {
         const interval = setInterval(() => {
-            router.refresh();
-        }, 4000);
+            if (document.visibilityState === 'visible') {
+                router.refresh();
+            }
+        }, 6000);
         return () => clearInterval(interval);
     }, [router]);
 
