@@ -330,7 +330,7 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                         value={replyContent}
                                         onChange={e => setReplyContent(e.target.value)}
                                         placeholder="Написать ответ клиенту..."
-                                        className="w-full border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                        className="w-full border rounded-lg p-3.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                                         rows={3}
                                     />
                                     <div className="flex justify-end mt-2">
