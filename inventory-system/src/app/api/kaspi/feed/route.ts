@@ -16,6 +16,17 @@ function escapeXml(unsafe: string) {
   });
 }
 
+function formatKaspiDate(d: Date) {
+  // Format as YYYY-MM-DD HH:mm in Almaty time (UTC+5)
+  const almaty = new Date(d.getTime() + 5 * 60 * 60 * 1000);
+  const yyyy = almaty.getUTCFullYear();
+  const mm = String(almaty.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(almaty.getUTCDate()).padStart(2, '0');
+  const hh = String(almaty.getUTCHours()).padStart(2, '0');
+  const min = String(almaty.getUTCMinutes()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+}
+
 export async function GET() {
   // Получаем только те товары, у которых заполнен Kaspi SKU
   const products = await prisma.product.findMany({
@@ -27,10 +38,12 @@ export async function GET() {
     }
   });
 
+  const merchantId = process.env.KASPI_MERCHANT_ID || "8967019";
+
   const xml = `<?xml version="1.0" encoding="utf-8"?>
-<kaspi_catalog date="${new Date().toISOString()}" xmlns="kaspiShopping" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="kaspiShopping http://kaspi.kz/kaspishopping.xsd">
-  <company>Dimmiani</company>
-  <merchantid>Dimmiani</merchantid>
+<kaspi_catalog date="${formatKaspiDate(new Date())}" xmlns="kaspiShopping" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://kaspi.kz/kaspishopping.xsd">
+  <company>${merchantId}</company>
+  <merchantid>${merchantId}</merchantid>
   <offers>
     ${(() => {
       // Группируем товары по kaspiSku для агрегации остатков
@@ -43,42 +56,35 @@ export async function GET() {
 
       products.forEach(p => {
         const sku = p.kaspiSku!.trim();
-        // if (p.quantity < 0) return; // FIX: We must include negative/zero stock to tell Kaspi they are out of stock!
+        const fullName = p.size && !p.name.trim().endsWith(p.size.trim())
+          ? `${p.name.trim()} ${p.size.trim()}`
+          : p.name.trim();
+
         if (!groups[sku]) {
           groups[sku] = {
-            name: p.name,
+            name: fullName,
             price: p.price,
             totalQty: 0,
             maxPreOrderDays: 0
           };
         }
-        // Суммируем только положительные остатки (или 0)
         const qty = Math.max(0, p.quantity);
         groups[sku].totalQty += qty;
         
-        // Предзаказ учитываем ТОЛЬКО если количество товара фактически > 0.
-        // Если количество <= 0, предзаказ игнорируется (обнуляется для Каспи).
-        if (qty > 0) {
-            groups[sku].maxPreOrderDays = Math.max(groups[sku].maxPreOrderDays, (p as any).preOrderDays || 0);
+        if (qty > 0 || (p as any).isPreorder) {
+          groups[sku].maxPreOrderDays = Math.max(groups[sku].maxPreOrderDays, (p as any).preOrderDays || 0);
         }
         
-        // Можно также обновлять цену, если она отличается, или имя
         groups[sku].price = p.price; 
       });
 
       return Object.entries(groups).map(([sku, data]) => {
         const isAvailable = data.totalQty > 0 || data.maxPreOrderDays > 0 ? "yes" : "no";
-        
-        let availabilityTag = `<availability available="${isAvailable}" storeId="PP3"`;
-        if (data.maxPreOrderDays > 0) {
-            availabilityTag += ` preOrder="${data.maxPreOrderDays}"`;
-        } else {
-            availabilityTag += ` stockCount="${data.totalQty}"`;
-        }
-        availabilityTag += `/>`;
+        const stockCount = data.maxPreOrderDays > 0 ? 0 : data.totalQty;
+        const availabilityTag = `<availability available="${isAvailable}" storeId="PP3" preOrder="${data.maxPreOrderDays}" stockCount="${stockCount}"/>`;
 
         return `
-    <offer sku="${sku}">
+    <offer sku="${escapeXml(sku)}">
       <model>${escapeXml(data.name)}</model>
       <brand>Dimmiani</brand>
       <availabilities>
@@ -93,7 +99,7 @@ export async function GET() {
 
   return new NextResponse(xml, {
     headers: {
-      "Content-Type": "text/xml",
+      "Content-Type": "text/xml; charset=utf-8",
     },
   });
 }
