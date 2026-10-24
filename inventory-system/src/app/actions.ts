@@ -13,7 +13,10 @@ import { getHalykOrders } from "@/lib/halyk";
 export async function createProduct(formData: FormData) {
     const name = formData.get("name") as string;
     const price = parseFloat(formData.get("price") as string);
-    const image = formData.get("image") as string; // Base64 string
+    const image = formData.get("image") as string;
+    const labelName = ((formData.get("labelName") as string) || "").trim() || null;
+    const composition = ((formData.get("composition") as string) || "").trim() || null;
+    const manufacturer = ((formData.get("manufacturer") as string) || "").trim() || null;
 
     // Mass add logic
     const isMassAdd = formData.get("isMassAdd") === "true";
@@ -26,16 +29,20 @@ export async function createProduct(formData: FormData) {
             const qtyStr = formData.get(`qty_${size}`);
             if (qtyStr) {
                 const quantity = parseInt(qtyStr as string);
-                if (!isNaN(quantity) && quantity > 0) {
+                if ((!isNaN(quantity) && quantity > 0) || isPreorder) {
                     const sku = generateEAN13();
                     await prisma.product.create({
                         data: {
-                            name: name, // Clean name, no size suffix
+                            name: name,
                             size: size,
                             price,
-                            quantity,
+                            quantity: isPreorder ? 0 : Math.max(0, quantity || 0),
+                            isPreorder,
                             image,
                             sku,
+                            labelName,
+                            composition,
+                            manufacturer,
                         },
                     });
                 }
@@ -43,28 +50,32 @@ export async function createProduct(formData: FormData) {
         }
     } else {
         // Single product
-            const quantity = parseInt(formData.get("quantity") as string);
-            const preOrderDays = parseInt(formData.get("preOrderDays") as string) || 0;
-    
-            // Only allow creation if quantity is positive OR if it's a pre-order
-            if ((!isNaN(quantity) && quantity > 0) || preOrderDays > 0) {
-                const sku = (formData.get("sku") as string) || generateEAN13();
-                const kaspiSku = (formData.get("kaspiSku") as string) || null;
-                const size = (formData.get("size") as string) || null;
-    
-                await prisma.product.create({
-                    data: {
-                        name,
-                        price,
-                        quantity: Math.max(0, quantity),
-                        image,
-                        sku,
-                        kaspiSku,
-                        size,
-                        preOrderDays
-                    },
-                });
-            }
+        const quantity = parseInt(formData.get("quantity") as string) || 0;
+        const preOrderDays = parseInt(formData.get("preOrderDays") as string) || 0;
+
+        // Allow creation if quantity is positive, or preOrderDays > 0, or isPreorder is checked
+        if (quantity >= 0 || preOrderDays > 0 || isPreorder) {
+            const sku = (formData.get("sku") as string) || generateEAN13();
+            const kaspiSku = ((formData.get("kaspiSku") as string) || "").trim() || null;
+            const size = ((formData.get("size") as string) || "").trim() || null;
+
+            await prisma.product.create({
+                data: {
+                    name,
+                    price,
+                    quantity: isPreorder ? 0 : Math.max(0, quantity),
+                    isPreorder,
+                    image,
+                    sku,
+                    kaspiSku,
+                    size,
+                    preOrderDays,
+                    labelName,
+                    composition,
+                    manufacturer,
+                },
+            });
+        }
     }
 
     revalidatePath("/inventory");
@@ -73,6 +84,10 @@ export async function createProduct(formData: FormData) {
 
 export async function updateProduct(id: number, data: any) {
     try {
+        const labelName = data.labelName !== undefined ? (String(data.labelName || "").trim() || null) : undefined;
+        const composition = data.composition !== undefined ? (String(data.composition || "").trim() || null) : undefined;
+        const manufacturer = data.manufacturer !== undefined ? (String(data.manufacturer || "").trim() || null) : undefined;
+
         await prisma.product.update({
             where: { id },
             data: {
@@ -85,14 +100,24 @@ export async function updateProduct(id: number, data: any) {
                 quantityShowroom: data.quantityShowroom ?? 0,
                 isPreorder: Boolean(data.isPreorder),
                 preOrderDays: data.preOrderDays !== undefined ? Number(data.preOrderDays) || 0 : undefined,
-                image: data.image
+                image: data.image,
+                ...(labelName !== undefined ? { labelName } : {}),
+                ...(composition !== undefined ? { composition } : {}),
+                ...(manufacturer !== undefined ? { manufacturer } : {}),
             }
         });
-        if (data.applyImageToAll && data.image) {
-            await prisma.product.updateMany({
-                where: { name: data.name, id: { not: id } },
-                data: { image: data.image }
-            });
+        if (data.applyImageToAll) {
+            const sharedUpdate: any = {};
+            if (data.image) sharedUpdate.image = data.image;
+            if (labelName !== undefined) sharedUpdate.labelName = labelName;
+            if (composition !== undefined) sharedUpdate.composition = composition;
+            if (manufacturer !== undefined) sharedUpdate.manufacturer = manufacturer;
+            if (Object.keys(sharedUpdate).length > 0) {
+                await prisma.product.updateMany({
+                    where: { name: data.name, id: { not: id } },
+                    data: sharedUpdate
+                });
+            }
         }
         revalidatePath("/inventory");
         revalidatePath("/storefront");

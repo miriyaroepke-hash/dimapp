@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Edit, Trash2, Printer, ArrowUpDown, CheckSquare, Square, ArrowRightLeft } from "lucide-react";
-import { ProductLabelData } from "@/lib/printLabel";
+import { Search, Edit, Trash2, Printer, FileText, ArrowUpDown, CheckSquare, Square, ArrowRightLeft } from "lucide-react";
+import { ProductLabelData, LabelType } from "@/lib/printLabel";
 import PrintLabelModal from "./PrintLabelModal";
 import EditProductModal from "./EditProductModal";
 import GroupStorefrontModal from "./GroupStorefrontModal";
@@ -25,6 +25,9 @@ interface Product {
     image: string | null;
     isPreorder: boolean;
     storefrontProductId: number | null;
+    labelName?: string | null;
+    composition?: string | null;
+    manufacturer?: string | null;
 }
 
 
@@ -43,6 +46,7 @@ export default function ProductTable({ products, total, currentPage, totalPages 
     const [isDeleting, setIsDeleting] = useState(false);
     const [isUpdatingPreorder, setIsUpdatingPreorder] = useState(false);
     const [printProducts, setPrintProducts] = useState<ProductLabelData[] | null>(null);
+    const [printLabelType, setPrintLabelType] = useState<LabelType>("barcode");
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
     
@@ -124,14 +128,18 @@ export default function ProductTable({ products, total, currentPage, totalPages 
         }
     };
 
-    const handleBulkPrint = () => {
+    const handleBulkPrint = (type: LabelType = "barcode") => {
         const selectedProducts = products.filter(p => selectedIds.includes(p.id)).map(p => ({
             name: p.name,
             sku: p.sku,
             price: p.price,
-            size: p.size
+            size: p.size,
+            labelName: p.labelName,
+            composition: p.composition,
+            manufacturer: p.manufacturer,
         }));
         if (selectedProducts.length > 0) {
+            setPrintLabelType(type);
             setPrintProducts(selectedProducts);
         }
     };
@@ -195,11 +203,18 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                         <span className="text-sm font-bold text-blue-700">{selectedIds.length} выбрано</span>
                         <div className="h-4 w-px bg-blue-200 mx-2"></div>
                         <button
-                            onClick={handleBulkPrint}
-                            className="flex items-center gap-1 text-sm text-gray-700 hover:text-black"
-                            title="Печать выбранных"
+                            onClick={() => handleBulkPrint("barcode")}
+                            className="flex items-center gap-1 text-sm text-purple-700 hover:text-purple-900 font-medium"
+                            title="Печать этикеток со штрихкодом"
                         >
-                            <Printer className="w-4 h-4" /> Печать
+                            <Printer className="w-4 h-4" /> Штрихкод
+                        </button>
+                        <button
+                            onClick={() => handleBulkPrint("care")}
+                            className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium ml-2 bg-amber-100 px-2 py-0.5 rounded"
+                            title="Печать этикеток-составников"
+                        >
+                            <FileText className="w-4 h-4" /> Составник
                         </button>
                         <button
                             onClick={() => {
@@ -421,16 +436,40 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                                     <td className="px-6 py-4">
                                         <div className="flex gap-2">
                                             <button
-                                                onClick={() => setPrintProducts([{
-                                                    name: product.name,
-                                                    sku: product.sku,
-                                                    price: product.price,
-                                                    size: product.size
-                                                }])}
+                                                onClick={() => {
+                                                    setPrintLabelType("barcode");
+                                                    setPrintProducts([{
+                                                        name: product.name,
+                                                        sku: product.sku,
+                                                        price: product.price,
+                                                        size: product.size,
+                                                        labelName: product.labelName,
+                                                        composition: product.composition,
+                                                        manufacturer: product.manufacturer,
+                                                    }]);
+                                                }}
                                                 className="p-1 text-purple-600 hover:bg-purple-50 rounded"
-                                                title="Печать"
+                                                title="Печать этикетки со штрихкодом"
                                             >
                                                 <Printer className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setPrintLabelType("care");
+                                                    setPrintProducts([{
+                                                        name: product.name,
+                                                        sku: product.sku,
+                                                        price: product.price,
+                                                        size: product.size,
+                                                        labelName: product.labelName,
+                                                        composition: product.composition,
+                                                        manufacturer: product.manufacturer,
+                                                    }]);
+                                                }}
+                                                className="p-1 text-amber-600 hover:bg-amber-50 rounded"
+                                                title="Печать этикетки-составника (RU/KZ)"
+                                            >
+                                                <FileText className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => setEditingProduct(product)}
@@ -487,6 +526,7 @@ export default function ProductTable({ products, total, currentPage, totalPages 
             {printProducts && (
                 <PrintLabelModal
                     products={printProducts}
+                    initialLabelType={printLabelType}
                     onClose={() => setPrintProducts(null)}
                 />
             )}

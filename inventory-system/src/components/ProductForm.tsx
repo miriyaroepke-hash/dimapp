@@ -215,6 +215,50 @@ export default function ProductForm() {
                 </div>
             )}
 
+
+            {/* Данные для этикетки-составника (RU / KZ) */}
+            <div className="bg-amber-50/60 border border-amber-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                        🧵 Данные для этикетки-составника (RU / KZ)
+                    </h3>
+                    <span className="text-xs text-gray-500">Для печати составника 40×24 мм</span>
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Наименование / Атауы
+                    </label>
+                    <input
+                        name="labelName"
+                        className="w-full border bg-white p-2 rounded text-sm"
+                        placeholder="Например: Куртка женская / Әйелдер күртесі (если пусто — берется название товара)"
+                    />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Состав / Құрамы
+                        </label>
+                        <input
+                            name="composition"
+                            className="w-full border bg-white p-2 rounded text-sm"
+                            placeholder="Например: 100% хлопок / 100% мақта"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Производитель / Өндіруші
+                        </label>
+                        <input
+                            name="manufacturer"
+                            defaultValue="DIMMIANI, Казахстан"
+                            className="w-full border bg-white p-2 rounded text-sm"
+                            placeholder="Например: DIMMIANI, Казахстан"
+                        />
+                    </div>
+                </div>
+            </div>
+
             {/* Image Upload — goes to Cloudinary */}
             <div>
                 <label className="block font-medium mb-1">Фото</label>

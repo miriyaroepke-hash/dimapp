@@ -41,6 +41,9 @@ model Product {
   quantity      Int      @default(0)
   quantityShowroom Int   @default(0) // Showroom stock
   isPreorder    Boolean  @default(false)
+  labelName     String?
+  composition   String?
+  manufacturer  String?
   preOrderDays  Int?     // If set, Kaspi shows this as pre-order with N days lead time
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
