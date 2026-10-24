@@ -239,6 +239,45 @@ export default function KaspiStockClient({ localProducts }: { localProducts: Loc
                     </div>
                 </div>
 
+                {/* Kaspi Real-time XML Feed URL Box */}
+                <div className="bg-red-50/60 border border-red-200 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <div className="text-xs font-bold text-red-700 uppercase tracking-wide">
+                            Ссылка автообновления остатков в реальном времени (XML-фид для кабинета Kaspi):
+                        </div>
+                        <code className="text-sm font-mono font-bold text-gray-900 select-all">
+                            https://admin.dimmiani.com/api/kaspi/feed
+                        </code>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                navigator.clipboard.writeText('https://admin.dimmiani.com/api/kaspi/feed');
+                                alert('Ссылка скопирована: https://admin.dimmiani.com/api/kaspi/feed');
+                            }}
+                            className="px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded hover:bg-red-700 transition-colors"
+                        >
+                            📋 Скопировать ссылку XML
+                        </button>
+                        <a
+                            href="/api/kaspi/feed"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 bg-white border border-red-300 text-red-700 text-xs font-semibold rounded hover:bg-red-50 transition-colors"
+                        >
+                            Открыть XML
+                        </a>
+                        <button
+                            type="button"
+                            onClick={() => window.location.href = '/api/kaspi/export-excel'}
+                            className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-semibold rounded hover:bg-gray-50 transition-colors"
+                        >
+                            📥 Скачать Excel для Kaspi
+                        </button>
+                    </div>
+                </div>
+
                 {/* Legend */}
                 <div className="flex flex-wrap gap-4 text-xs text-gray-500">
                     <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-400 inline-block"/>Есть в Kaspi, нет у нас (добавьте kaspiSku)</span>
