@@ -78,10 +78,13 @@ export async function updateProduct(id: number, data: any) {
             data: {
                 name: data.name,
                 sku: data.sku,
+                kaspiSku: data.kaspiSku ? String(data.kaspiSku).trim() : null,
                 size: data.size || null,
                 price: data.price,
                 quantity: data.quantity,
-                quantityShowroom: data.quantityShowroom,
+                quantityShowroom: data.quantityShowroom ?? 0,
+                isPreorder: Boolean(data.isPreorder),
+                preOrderDays: data.preOrderDays !== undefined ? Number(data.preOrderDays) || 0 : undefined,
                 image: data.image
             }
         });
@@ -92,6 +95,7 @@ export async function updateProduct(id: number, data: any) {
             });
         }
         revalidatePath("/inventory");
+        revalidatePath("/storefront");
         return { success: true };
     } catch (e: any) {
         console.error("Update product error:", e);
@@ -1281,12 +1285,24 @@ export async function getStorefrontProducts() {
     }
 }
 
-export async function updateStorefrontProduct(id: number, data: { name?: string; image?: string | null; description?: string | null; video?: string | null; images?: string[]; categories?: string[] }) {
+export async function updateStorefrontProduct(id: number, data: { name?: string; image?: string | null; description?: string | null; video?: string | null; images?: string[]; categories?: string[]; variantSkus?: { id: number; kaspiSku: string; sku?: string }[] }) {
     try {
+        const { variantSkus, ...storefrontData } = data;
         await prisma.storefrontProduct.update({
             where: { id },
-            data
+            data: storefrontData
         });
+        if (variantSkus && Array.isArray(variantSkus)) {
+            for (const v of variantSkus) {
+                await prisma.product.update({
+                    where: { id: v.id },
+                    data: {
+                        kaspiSku: v.kaspiSku ? v.kaspiSku.trim() : null,
+                        ...(v.sku ? { sku: v.sku.trim() } : {})
+                    }
+                });
+            }
+        }
         revalidatePath('/storefront');
         revalidatePath('/inventory');
         return { success: true };

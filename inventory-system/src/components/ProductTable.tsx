@@ -208,6 +208,7 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                                     const worksheet = xlsx.utils.json_to_sheet(selectedProducts.map(p => ({
                                         ID: p.id,
                                         Наименование: p.name,
+                                        "Артикул Kaspi": p.kaspiSku || "",
                                         Штрихкод: p.sku,
                                         Размер: p.size || "",
                                         Цена: p.price,
@@ -295,6 +296,15 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                                     <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "sku" ? "text-blue-600" : "text-gray-300"}`} />
                                 </div>
                             </th>
+                            <th
+                                className="px-6 py-3 cursor-pointer hover:bg-gray-100"
+                                onClick={() => handleSort("kaspiSku")}
+                            >
+                                <div className="flex items-center gap-1 group">
+                                    Арт. Kaspi
+                                    <ArrowUpDown className={`w-3 h-3 group-hover:text-blue-500 ${sort === "kaspiSku" ? "text-blue-600" : "text-gray-300"}`} />
+                                </div>
+                            </th>
 
                             <th
                                 className="px-6 py-3 cursor-pointer hover:bg-gray-100"
@@ -376,6 +386,7 @@ export default function ProductTable({ products, total, currentPage, totalPages 
                                     </td>
                                     <td className="px-6 py-4 font-medium text-gray-900">{product.name}</td>
                                     <td className="px-6 py-4 text-gray-500 font-mono text-sm">{product.sku}</td>
+                                    <td className="px-6 py-4 text-red-600 font-mono text-sm font-medium">{product.kaspiSku || "—"}</td>
                                     <td className="px-6 py-4">{product.size || "-"}</td>
                                     <td className="px-6 py-4 whitespace-nowrap font-medium">₸ {product.price.toLocaleString("ru-RU")}</td>
                                     <td className="px-6 py-4 text-center">

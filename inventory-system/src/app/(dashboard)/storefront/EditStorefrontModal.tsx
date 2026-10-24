@@ -4,6 +4,16 @@ import { useState } from "react";
 import { Loader2, X, Upload, Check } from "lucide-react";
 import { updateStorefrontProduct } from "@/app/actions";
 
+interface VariantProduct {
+    id: number;
+    name: string;
+    sku: string;
+    kaspiSku: string | null;
+    size: string | null;
+    price: number;
+    quantity: number;
+}
+
 interface StorefrontProduct {
     id: number;
     name: string;
@@ -12,6 +22,7 @@ interface StorefrontProduct {
     images: string[];
     video: string | null;
     categories?: string[];
+    products?: VariantProduct[];
 }
 
 interface Props {
@@ -76,6 +87,14 @@ export default function EditStorefrontModal({ product, categoriesList, onClose, 
     const [video, setVideo] = useState(product.video || "");
     const [images, setImages] = useState<string[]>(product.images?.length > 0 ? product.images : (product.image ? [product.image] : []));
     const [selectedCategories, setSelectedCategories] = useState<string[]>(product.categories || []);
+    const [variantSkus, setVariantSkus] = useState<{ id: number; size: string | null; sku: string; kaspiSku: string }[]>(
+        (product.products || []).map(v => ({
+            id: v.id,
+            size: v.size,
+            sku: v.sku || "",
+            kaspiSku: v.kaspiSku || ""
+        }))
+    );
     const [uploadingImage, setUploadingImage] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -83,6 +102,10 @@ export default function EditStorefrontModal({ product, categoriesList, onClose, 
         setSelectedCategories(prev =>
             prev.includes(catId) ? prev.filter(c => c !== catId) : [...prev, catId]
         );
+    };
+
+    const handleVariantSkuChange = (id: number, field: 'kaspiSku' | 'sku', value: string) => {
+        setVariantSkus(prev => prev.map(v => v.id === id ? { ...v, [field]: value } : v));
     };
 
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,7 +164,8 @@ export default function EditStorefrontModal({ product, categoriesList, onClose, 
                 video: video.trim() || null,
                 images: images,
                 image: images.length > 0 ? images[0] : null,
-                categories: selectedCategories
+                categories: selectedCategories,
+                variantSkus: variantSkus.map(v => ({ id: v.id, kaspiSku: v.kaspiSku, sku: v.sku }))
             });
             if (res.success) {
                 onSuccess();
@@ -157,7 +181,7 @@ export default function EditStorefrontModal({ product, categoriesList, onClose, 
 
     return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
                 <div className="flex justify-between items-center p-4 border-b bg-gray-50 flex-shrink-0">
                     <h2 className="text-xl font-bold">Редактировать Витрину</h2>
                     <button onClick={onClose} className="text-gray-500 hover:text-black">
@@ -175,6 +199,44 @@ export default function EditStorefrontModal({ product, categoriesList, onClose, 
                             className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
+
+                    {/* Variant SKUs & Kaspi SKUs */}
+                    {variantSkus.length > 0 && (
+                        <div className="bg-red-50/40 border border-red-100 rounded-lg p-3 space-y-2">
+                            <label className="block text-xs font-bold text-gray-800 uppercase tracking-wide">
+                                Артикулы размеров (Kaspi / Штрихкод)
+                            </label>
+                            <div className="space-y-2">
+                                {variantSkus.map(v => (
+                                    <div key={v.id} className="grid grid-cols-12 gap-2 items-center text-xs">
+                                        <div className="col-span-3 font-bold text-gray-800 bg-white border px-2 py-1.5 rounded text-center">
+                                            {v.size || "Без разм."}
+                                        </div>
+                                        <div className="col-span-4">
+                                            <input
+                                                type="text"
+                                                value={v.sku}
+                                                onChange={(e) => handleVariantSkuChange(v.id, 'sku', e.target.value)}
+                                                placeholder="Штрихкод"
+                                                title="Внутренний штрихкод / артикул"
+                                                className="w-full border border-gray-300 rounded px-2 py-1.5 font-mono text-xs bg-white"
+                                            />
+                                        </div>
+                                        <div className="col-span-5">
+                                            <input
+                                                type="text"
+                                                value={v.kaspiSku}
+                                                onChange={(e) => handleVariantSkuChange(v.id, 'kaspiSku', e.target.value)}
+                                                placeholder="Артикул Kaspi"
+                                                title="Артикул Kaspi"
+                                                className="w-full border border-red-300 rounded px-2 py-1.5 font-mono text-xs bg-white focus:ring-1 focus:ring-red-500"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -200,9 +262,6 @@ export default function EditStorefrontModal({ product, categoriesList, onClose, 
                                 );
                             })}
                         </div>
-                        <p className="text-xs text-gray-500 mt-1.5">
-                            Выберите одну или несколько категорий, чтобы товар отображался в них на сайте и в телефоне.
-                        </p>
                     </div>
 
                     <div>

@@ -13,6 +13,7 @@ interface Product {
     price: number;
     quantity: number;
     quantityShowroom: number;
+    preOrderDays?: number | null;
     image: string | null;
     isPreorder: boolean;
 }
@@ -30,10 +31,12 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
     const [form, setForm] = useState({
         name: product.name,
         sku: product.sku,
+        kaspiSku: product.kaspiSku || "",
         size: product.size || "",
         price: product.price.toString(),
         quantity: product.quantity.toString(),
         quantityShowroom: product.quantityShowroom.toString(),
+        preOrderDays: (product.preOrderDays ?? 0).toString(),
         image: product.image || "",
         isPreorder: (product as any).isPreorder || false,
     });
@@ -101,7 +104,7 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
             }
 
             setForm({ ...form, image: data.url });
-            setApplyImageToAll(true); // Auto-check to save user time
+            setApplyImageToAll(true);
         } catch (error) {
             console.error("Image upload failed", error);
             alert("Не удалось загрузить фото. Возможно, оно слишком большое или не поддерживается. Попробуйте скриншот.");
@@ -119,9 +122,11 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
         setLoading(true);
         const res = await updateProduct(product.id, {
             ...form,
+            kaspiSku: form.kaspiSku.trim() || null,
             price: parseFloat(form.price),
-            quantity: parseInt(form.quantity),
+            quantity: parseInt(form.quantity) || 0,
             quantityShowroom: 0,
+            preOrderDays: parseInt(form.preOrderDays) || 0,
             isPreorder: form.isPreorder,
             applyImageToAll
         });
@@ -136,7 +141,7 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg w-full max-w-md flex flex-col shadow-xl">
+            <div className="bg-white rounded-lg w-full max-w-md max-h-[92vh] flex flex-col shadow-xl">
                 {/* Header */}
                 <div className="flex justify-between items-center p-4 border-b">
                     <h2 className="text-lg font-bold">Редактировать товар</h2>
@@ -200,13 +205,25 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
 
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Штрихкод *</label>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Штрихкод / Артикул *</label>
                                 <input
                                     className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-mono"
                                     value={form.sku}
                                     onChange={e => setForm({ ...form, sku: e.target.value })}
                                 />
                             </div>
+                            <div>
+                                <label className="block text-xs font-bold text-red-600 mb-1">Артикул Kaspi</label>
+                                <input
+                                    className="w-full border border-red-200 bg-red-50/30 p-2 rounded text-sm focus:ring-2 focus:ring-red-500 font-mono"
+                                    placeholder="Например: 109680982"
+                                    value={form.kaspiSku}
+                                    onChange={e => setForm({ ...form, kaspiSku: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3">
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Размер</label>
                                 <input
@@ -215,9 +232,6 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                                     onChange={e => setForm({ ...form, size: e.target.value })}
                                 />
                             </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3">
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Цена (₸) *</label>
                                 <input
@@ -231,11 +245,23 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Склад *</label>
                                 <input
                                     type="number"
-                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-bold text-green-700 disabled:opacity-50 disabled:bg-gray-100" disabled={form.isPreorder}
+                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-bold text-green-700 disabled:opacity-50 disabled:bg-gray-100"
+                                    disabled={form.isPreorder}
                                     value={form.quantity}
                                     onChange={e => setForm({ ...form, quantity: e.target.value })}
                                 />
                             </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Предзаказ Kaspi (дней ожидания, 0 — нет)</label>
+                            <input
+                                type="number"
+                                min="0"
+                                className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 font-mono"
+                                value={form.preOrderDays}
+                                onChange={e => setForm({ ...form, preOrderDays: e.target.value })}
+                            />
                         </div>
                         
                         <div className="flex items-center gap-3 bg-purple-50 p-3 rounded-lg border border-purple-100">
@@ -247,7 +273,7 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                                 className="w-5 h-5 text-purple-600 rounded cursor-pointer" 
                             />
                             <label htmlFor="edit-isPreorder" className="font-bold text-purple-800 cursor-pointer select-none text-sm">
-                                Предзаказ (товар доступен под заказ с фабрики)
+                                Предзаказ на сайте (доступен под заказ с фабрики)
                             </label>
                         </div>
                     </div>

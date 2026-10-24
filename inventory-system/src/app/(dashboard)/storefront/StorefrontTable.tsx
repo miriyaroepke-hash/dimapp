@@ -9,6 +9,8 @@ import EditStorefrontModal from "./EditStorefrontModal";
 interface Product {
     id: number;
     name: string;
+    sku: string;
+    kaspiSku: string | null;
     size: string | null;
     price: number;
     quantity: number;
@@ -260,9 +262,18 @@ export default function StorefrontTable({ products, initialCategories }: { produ
                                             <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded border border-red-100">Нет привязанных</span>
                                         ) : (
                                             p.products.map(variant => (
-                                                <div key={variant.id} className="text-xs bg-gray-100 border border-gray-200 px-2 py-1 rounded shadow-sm" title={variant.name}>
-                                                    <span className="font-semibold text-gray-700">{variant.size || "Без размера"}</span>
-                                                    <span className="ml-2 text-gray-500">({variant.quantity} шт)</span>
+                                                <div key={variant.id} className="text-xs bg-gray-100 border border-gray-200 px-2.5 py-1.5 rounded shadow-sm flex flex-col gap-0.5" title={variant.name}>
+                                                    <div>
+                                                        <span className="font-semibold text-gray-800">{variant.size || "Без размера"}</span>
+                                                        <span className="ml-1.5 text-gray-500">({variant.quantity} шт)</span>
+                                                    </div>
+                                                    <div className="font-mono text-[11px] text-gray-600">
+                                                        {variant.kaspiSku ? (
+                                                            <span className="text-red-600 font-semibold">Kaspi: {variant.kaspiSku}</span>
+                                                        ) : (
+                                                            <span>ШК: {variant.sku}</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))
                                         )}

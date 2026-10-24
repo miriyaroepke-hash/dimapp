@@ -13,6 +13,7 @@ const navItems = [
     { name: "Предзаказы", href: "/preorders", icon: Package },
     { name: "Витрина", href: "/storefront", icon: Store },
     { name: "Заказы сайта", href: "/website-orders", icon: Globe },
+    { name: "Остатки Kaspi", href: "/kaspi-stock", icon: Package },
     { name: "Инвентаризация", href: "/stock-check", icon: ShoppingCart },
     { name: "Заказы", href: "/orders", icon: ShoppingCart },
     { name: "Архив", href: "/archive", icon: Package },
