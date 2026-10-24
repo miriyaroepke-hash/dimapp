@@ -50,6 +50,40 @@ export default function KaspiStockClient({ localProducts }: { localProducts: Loc
         setIsLoading(true);
         setError(null);
         
+        if (file.name.toLowerCase().endsWith(".xml")) {
+            try {
+                const text = await file.text();
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(text, "text/xml");
+                const offerNodes = Array.from(xmlDoc.getElementsByTagName("offer"));
+                const parsedOffers: KaspiOffer[] = offerNodes.map(node => {
+                    const sku = (node.getAttribute("sku") || "").trim();
+                    const modelNode = node.getElementsByTagName("model")[0];
+                    const name = (modelNode?.textContent || "Неизвестно").trim();
+                    let totalQty = 0;
+                    const availNodes = Array.from(node.getElementsByTagName("availability"));
+                    availNodes.forEach(av => {
+                        const sc = av.getAttribute("stockCount");
+                        const available = av.getAttribute("available");
+                        if (sc !== null && !isNaN(parseFloat(sc))) {
+                            totalQty += Math.round(parseFloat(sc));
+                        } else if (available === "yes") {
+                            totalQty += 1;
+                        }
+                    });
+                    return { sku, name, quantity: totalQty };
+                }).filter(o => o.sku !== "");
+                setKaspiOffers(parsedOffers);
+                setLoaded(true);
+            } catch (err: any) {
+                setError("Ошибка при разборе XML файла: " + err.message);
+            } finally {
+                setIsLoading(false);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+            }
+            return;
+        }
+
         try {
             const xlsx = await import("xlsx");
             const reader = new FileReader();
