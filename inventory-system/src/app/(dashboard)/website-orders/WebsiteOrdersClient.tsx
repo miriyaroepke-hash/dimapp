@@ -24,6 +24,8 @@ interface Order {
     deliveryMethod: string;
     paymentMethod: string;
     totalAmount: number;
+    codAmount?: number | null;
+    deliveryCost?: number | null;
     createdAt: Date;
     items: OrderItem[];
 }
@@ -273,9 +275,16 @@ export default function WebsiteOrdersClient({ orders, tickets }: { orders: Order
                                                     {order.city ? `${order.city}, ` : ''}{order.address || "Нет адреса"}
                                                 </span>
                                             </div>
-                                            <div className="flex items-center">
-                                                <CreditCard className="w-4 h-4 text-green-500 mr-2 shrink-0" />
-                                                <span className="text-gray-700 font-semibold">{order.paymentMethod}</span>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center">
+                                                    <CreditCard className="w-4 h-4 text-green-500 mr-2 shrink-0" />
+                                                    <span className="text-gray-700 font-semibold">{order.paymentMethod}</span>
+                                                </div>
+                                                {(order.codAmount || ((order.deliveryMethod === "CDEK" || order.deliveryMethod === "CDEK_PVZ") && order.deliveryCost)) ? (
+                                                    <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200">
+                                                        Наложка СДЭК: {(order.codAmount || order.deliveryCost || 0).toLocaleString()} ₸
+                                                    </span>
+                                                ) : null}
                                             </div>
                                         </div>
 

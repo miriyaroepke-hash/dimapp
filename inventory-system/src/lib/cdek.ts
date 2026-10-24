@@ -122,8 +122,16 @@ export async function createCdekOrderPayload(order: any) {
     // User: "Payment (COD) matches nalozhka"
     // User: "VAT = 0"
 
-    const isCod = order.codAmount && order.codAmount > 0;
-    const totalCod = isCod ? order.codAmount : 0;
+    const effectiveCodAmount =
+        order.codAmount && Number(order.codAmount) > 0
+            ? Number(order.codAmount)
+            : (order.deliveryMethod === "CDEK" || order.deliveryMethod === "CDEK_PVZ" || order.deliveryMethod === "CDEK_COURIER") &&
+              order.deliveryCost &&
+              Number(order.deliveryCost) > 0
+            ? Number(order.deliveryCost)
+            : 0;
+    const isCod = effectiveCodAmount > 0;
+    const totalCod = effectiveCodAmount;
 
     // We need to calculate price per unit for CDEK payload
     // If COD, we need `payment.value` to sum up to `totalCod`.
@@ -147,7 +155,7 @@ export async function createCdekOrderPayload(order: any) {
                 // unitPayment = 5000.
                 // If items[0].quantity is 1, unitPayment = 10000.
 
-                unitPayment = totalCod / item.quantity;
+                unitPayment = Math.round((totalCod / item.quantity) * 100) / 100;
             } else {
                 unitPayment = 0;
             }

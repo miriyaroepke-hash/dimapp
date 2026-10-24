@@ -25,6 +25,7 @@ interface Order {
     deliveryMethod: string;
     paymentMethod: string;
     codAmount: number | null;
+    deliveryCost?: number | null;
     totalAmount: number;
     createdAt: Date;
     items: OrderItem[];
@@ -533,7 +534,7 @@ export default function DailyPlanClient({ orders, kaspiCount = 0 }: { orders: Or
                                         <td className="px-6 py-4">
                                             <div className="text-xs">
                                                 {order.paymentMethod}
-                                                {order.codAmount ? <div className="text-red-500 font-bold">Наложка: {order.codAmount}</div> : null}
+                                                {(order.codAmount || ((order.deliveryMethod === "CDEK" || order.deliveryMethod === "CDEK_PVZ") && order.deliveryCost)) ? <div className="text-red-500 font-bold">Наложка: {order.codAmount || order.deliveryCost}</div> : null}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right font-bold text-gray-900">
